@@ -18,6 +18,8 @@ impl MlFeed for MLFeedService {
         &self,
         request: Request<FeedRequest>,
     ) -> Result<Response<FeedResponse>, Status> {
+        let req = request.into_inner();
+
         let res = Response::new(FeedResponse {
             feed: vec![
                 PostItem {

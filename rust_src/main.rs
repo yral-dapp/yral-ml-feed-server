@@ -7,6 +7,7 @@ use tonic::transport::Server;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
+pub mod canister;
 pub mod error;
 pub mod ml_feed_impl;
 
