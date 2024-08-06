@@ -98,7 +98,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     tonic_build::configure()
         .build_client(true)
         .build_server(false)
-        .file_descriptor_set_path(out_dir.join("ml_feed_descriptor.bin"))
+        .file_descriptor_set_path(out_dir.join("ml_feed_py_descriptor.bin"))
         .out_dir(out_dir)
         .compile(&[proto_file], &["proto"])?;
 

@@ -1,15 +1,19 @@
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use anyhow::Result;
+use canister::init_agent;
 use http::header::HeaderName;
+use ic_agent::Agent;
 use ml_feed_impl::{ml_feed::ml_feed_server::MlFeedServer, MLFeedService};
 use tonic::transport::Server;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 pub mod canister;
+pub mod consts;
 pub mod error;
 pub mod ml_feed_impl;
+pub mod utils;
 
 const DEFAULT_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 const DEFAULT_EXPOSED_HEADERS: [&str; 3] =
@@ -17,21 +21,30 @@ const DEFAULT_EXPOSED_HEADERS: [&str; 3] =
 const DEFAULT_ALLOW_HEADERS: [&str; 4] =
     ["x-grpc-web", "content-type", "x-user-agent", "grpc-timeout"];
 
+pub struct AppState {
+    pub agent: Agent,
+}
+
+impl AppState {
+    pub async fn new() -> Self {
+        AppState {
+            agent: init_agent().await,
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let addr = SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 0], 50051));
 
-    let mlfeed_service = MLFeedService::default();
+    let app_state = AppState::new().await;
+
+    let mlfeed_service = MLFeedService {
+        shared_state: Arc::new(app_state),
+    };
     let mlfeed_server = MlFeedServer::new(mlfeed_service);
 
     println!("MlFeedServer listening on {}", addr);
-
-    // Server::builder()
-    //     // GrpcWeb is over http1 so we must enable it.
-    //     .accept_http1(true)
-    //     .add_service(tonic_web::enable(mlfeed_server))
-    //     .serve(addr)
-    //     .await?;
 
     Server::builder()
         .accept_http1(true)
