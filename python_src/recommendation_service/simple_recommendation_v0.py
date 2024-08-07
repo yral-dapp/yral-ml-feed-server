@@ -77,14 +77,21 @@ class SimpleRecommendationV0:
     def get_popular_videos(self, watch_history_uris, num_results):
         # Construct the SQL query
         watched_video_ids = ', '.join(f"'{video_id}'" for video_id in watch_history_uris)
-
-        query = f"""
-        SELECT video_id, global_popularity_score
-        FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
-        WHERE video_id NOT IN ({watched_video_ids})
-        ORDER BY global_popularity_score DESC
-        LIMIT {num_results}
-        """
+        if watched_video_ids != "":
+            query = f"""
+            SELECT video_id, global_popularity_score
+            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            WHERE video_id NOT IN ({watched_video_ids})
+            ORDER BY global_popularity_score DESC
+            LIMIT {num_results}
+            """
+        else:
+            query = f"""
+            SELECT video_id, global_popularity_score
+            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            ORDER BY global_popularity_score DESC
+            LIMIT {num_results}
+            """
         rdf = self.bq.query(query) # rdf - recent videos data frame 
         video_ids = rdf['video_id'].tolist()
         video_ids_string = ', '.join(f"'gs://{self.video_bucket_name}/{video_id}.mp4'" for video_id in video_ids)
