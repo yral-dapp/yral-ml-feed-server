@@ -2,8 +2,9 @@ from config import Config
 from utils.upstash_utils import UpstashUtils
 from concurrent.futures import ThreadPoolExecutor
 from utils.bigquery_utils import BigQueryClient
-
-
+from ast import literal_eval
+import logging
+_LOGGER = logging.getLogger(__name__)
 
 class SimpleRecommendationV0:
     def __init__(self):
@@ -11,7 +12,7 @@ class SimpleRecommendationV0:
         self.bq = BigQueryClient()
         self.upstash_db = UpstashUtils()
         ### hyper-parameters
-        self.sample_size = 5
+        self.sample_size = 10 # number of successful plays to sample
         self.video_bucket_name = cfg.get('video_bucket_name')
 
 
@@ -32,10 +33,10 @@ class SimpleRecommendationV0:
         """
         return self.bq.query(query)
     
-    def fetch_relevant_id(self, vector, watch_history, num_results=10):
+    def fetch_relevant_id(self, vector, watch_history, num_results):
         filter_query = "uri not in (" + ",".join([f'"{uri}"' for uri in watch_history]) + ")"
         results = self.upstash_db.query(vector, top_k=num_results, include_metadata=True, filter=filter_query)
-        exploit_ids = [{'canister_id': result.metadata['canister_id'], 'post_id': result.metadata['post_id']} for result in results]
+        exploit_ids = [{'video_uri': result.id, 'canister_id': result.metadata['canister_id'], 'post_id': result.metadata['post_id']} for result in results]
         return exploit_ids
         
     def fetch_relevant_ids(self, vector_to_query, watch_history, num_results=10):
@@ -48,65 +49,70 @@ class SimpleRecommendationV0:
                 result.extend(relevant_ids)
         return result
     
-    def get_recommendation(self, successful_plays, watch_history):
-        """
-        Generates a list of recommended post IDs based on the successful plays and watch history.
+    # def get_recommendation(self, successful_plays, watch_history):
+    #     """
+    #     Generates a list of recommended post IDs based on the successful plays and watch history.
 
-        This function serves as the entry point for generating recommendations. It first fetches
-        embeddings for the successful plays, filters out any embeddings of incorrect size, and then
-        samples a subset of these embeddings. It queries the Upstash vector database with these
-        embeddings to find relevant post IDs that are not in the user's watch history.
+    #     This function serves as the entry point for generating recommendations. It first fetches
+    #     embeddings for the successful plays, filters out any embeddings of incorrect size, and then
+    #     samples a subset of these embeddings. It queries the Upstash vector database with these
+    #     embeddings to find relevant post IDs that are not in the user's watch history.
 
-        Args:
-            successful_plays (list of str): A list of URIs representing the videos that have been successfully played.
-            watch_history (list of str): A list of URIs representing the user's watch history.
+    #     Args:
+    #         successful_plays (list of str): A list of URIs representing the videos that have been successfully played.
+    #         watch_history (list of str): A list of URIs representing the user's watch history.
 
-        Returns:
-            list of dict: A list of dictionaries, where each dictionary contains 'canister_id' and 'post_id'
-                          keys corresponding to the recommended posts. For example:
-                          [{'canister_id': '123', 'post_id': '456'}, ...]
+    #     Returns:
+    #         list of dict: A list of dictionaries, where each dictionary contains 'canister_id' and 'post_id'
+    #                       keys corresponding to the recommended posts. For example:
+    #                       [{'canister_id': '123', 'post_id': '456'}, ...]
 
-        """
-        vdf = self.fetch_embeddings(successful_plays) # video-dataframe
-        vdf = vdf[vdf.ml_generate_embedding_result.apply(lambda x: len(x))==1408]
-        sample_vdf = vdf if len(vdf) < self.sample_size else vdf.sample(self.sample_size, random_state=None) # to be replaced with better logic once likes and watch duration is available 
-        vector_to_query = sample_vdf.ml_generate_embedding_result.tolist()
-        relevant_ids = self.fetch_relevant_ids(vector_to_query, watch_history)
-        return relevant_ids
+    #     """
+    #     vdf = self.fetch_embeddings(successful_plays) # video-dataframe
+    #     vdf = vdf[vdf.ml_generate_embedding_result.apply(lambda x: len(x))==1408]
+    #     sample_vdf = vdf if len(vdf) < self.sample_size else vdf.sample(self.sample_size, random_state=None) # to be replaced with better logic once likes and watch duration is available 
+    #     vector_to_query = sample_vdf.ml_generate_embedding_result.tolist()
+    #     relevant_ids = self.fetch_relevant_ids(vector_to_query, watch_history)
+    #     return relevant_ids
     
     def get_popular_videos(self, watch_history_uris, num_results):
         # Construct the SQL query
-        watched_video_ids = ', '.join(f"'{video_id}'" for video_id in watch_history_uris)
+        video_ids = [uri.split('/')[-1].split('.')[0] for uri in watch_history_uris] # the script would break if the format is not .mp4
+        watched_video_ids = ', '.join(f"'{video_id}'" for video_id in video_ids)
         if watched_video_ids != "":
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             WHERE video_id NOT IN ({watched_video_ids})
             ORDER BY global_popularity_score DESC
-            LIMIT {num_results}
+            LIMIT {int(3*num_results)}
             """
         else:
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             ORDER BY global_popularity_score DESC
-            LIMIT {num_results}
+            LIMIT {int(3*num_results)}
             """
         rdf = self.bq.query(query) # rdf - recent videos data frame 
         video_ids = rdf['video_id'].tolist()
-        video_ids_string = ', '.join(f"'gs://{self.video_bucket_name}/{video_id}.mp4'" for video_id in video_ids)
+
+        if not len(video_ids):
+            return []
+        
+        video_ids_string = ', '.join(f'"{video_id}"' for video_id in video_ids)
         
         fetch_post_ids = f"""
         SELECT
-        uri, metadata
-        FROM `hot-or-not-feed-intelligence.yral_ds.video_embeddings`
-        WHERE uri IN ({video_ids_string})
+        video_id, post_id, canister_id
+        FROM `hot-or-not-feed-intelligence.yral_ds.video_metadata`
+        WHERE video_id IN ({video_ids_string})
         """
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
-        mdf['metadata'] = mdf.metadata.apply(lambda x: {i['name']: i['value'] for i in x})
-
-        return mdf.metadata.tolist()
+        mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
+        _LOGGER.info([f"gs://yral-videos/{i}.mp4" for i in mdf.video_id.tolist()])
+        return mdf['post_id canister_id'.split()].to_dict('records')
     
     def get_score_aware_recommendation(self, successful_plays, watch_history, num_results=10):
         """
@@ -146,6 +152,7 @@ class SimpleRecommendationV0:
 
         vector_to_query = sample_vdf.ml_generate_embedding_result.tolist()
         relevant_ids = self.fetch_relevant_ids(vector_to_query, watch_history, num_results=num_results)
+
         return relevant_ids
 
         
@@ -169,11 +176,14 @@ if __name__ == '__main__':
 
     rec = SimpleRecommendationV0()
     successful_plays = videos_watched[:6]
-    result = rec.get_recommendation(successful_plays=successful_plays, watch_history=videos_watched)
-    
+    result_exploitation = rec.get_recommendation(successful_plays=successful_plays, watch_history=videos_watched, num_results=10)
+    result_exploration = rec.get_popular_videos(watch_history_uris=videos_watched, num_results=10)
     end_time = time.time()
     time_taken = end_time - start_time
     print(f"Time taken: {time_taken:.2f} seconds")
-    print(result)
+    print(f"Exploitation: {len(result_exploitation)}")
+    print(result_exploitation)
+    print(f"Exploration: {len(result_exploration)}")
+    print(result_exploration)
 
         
