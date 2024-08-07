@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package ml_feed_py;
+
+message MLPostItem {
+  uint32 post_id = 1;
+  string canister_id = 2;
+  string video_id = 3;
+}
+
+message MLPostItemResponse {
+  uint32 post_id = 1;
+  string canister_id = 2;
+}
+
+message WatchHistoryItem {
+  uint32 post_id = 1;
+  string canister_id = 2;
+  string video_id = 3;
+  float percent_watched = 4;
+  string timestamp = 5;
+}
+
+message SuccessHistoryItem {
+  uint32 post_id = 1;
+  string canister_id = 2;
+  string video_id = 3;
+  string item_type = 4;
+  float percent_watched = 5;
+  string timestamp = 6;
+}
+
+message MLFeedRequest {
+  string canister_id = 1;
+  repeated WatchHistoryItem watch_history = 2;
+  repeated SuccessHistoryItem success_history = 3;
+  repeated MLPostItem filter_posts = 4;
+  uint32 num_results = 5;
+}
+
+message MLFeedResponse { repeated MLPostItemResponse feed = 1; }
+
+service MLFeed {
+  rpc get_ml_feed(MLFeedRequest) returns (MLFeedResponse) {}
+}
