@@ -1,23 +1,23 @@
-app = 'yral-ml-feed-server'
+app = 'yral-ml-feed-server-staging'
 primary_region = 'sin'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
 
 [build]
+[build.args]
+NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NONROOT_USER`
 
 [env]
 PORT = '8080'
 
 [processes]
-# The command below is used to launch a Rails server; be sure to
-# replace with the command you're using to launch your server.
-web = "./ml_feed_rust"
-# cron = "supercronic /app/crontab"
+rust_proc = "./ml_feed_rust"
+python_proc = "/bin/bash -c ./entrypoint.sh $PYTHON_USER"
 
 [[services]]
 internal_port = 50051
 protocol = "tcp"
-processes = ["web"]
+processes = ["rust_proc"]
 
 [[services.ports]]
 handlers = ["tls"]
@@ -32,3 +32,8 @@ soft_limit = 500
 memory = '8gb'
 cpu_kind = 'shared'
 cpus = 8
+
+[mounts]
+source = "data"
+destination = "/home/pythonuser"
+initial_size = "50gb"
