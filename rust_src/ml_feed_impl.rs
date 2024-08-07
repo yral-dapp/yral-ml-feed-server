@@ -35,6 +35,10 @@ impl MlFeed for MLFeedService {
         request: Request<FeedRequest>,
     ) -> Result<Response<FeedResponse>, Status> {
         let req_obj = request.into_inner();
+        let limit = req_obj.num_results;
+
+        // println!("get_feed request: {:?}", req_obj);
+
         let canister_id = req_obj.canister_id.clone();
         let canister_id_principal = Principal::from_text(&canister_id).unwrap();
 
@@ -119,115 +123,118 @@ impl MlFeed for MLFeedService {
         //     feed: response_items,
         // }));
 
-        let res = Response::new(FeedResponse {
-            feed: vec![
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 125,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 124,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 123,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 122,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 121,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 120,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 119,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 118,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 117,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 116,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 115,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 114,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 113,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 112,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 111,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 110,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 109,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 108,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 107,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 106,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 105,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 104,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 103,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 102,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 101,
-                },
-                PostItemResponse {
-                    canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-                    post_id: 100,
-                },
-            ],
-        });
+        let res = vec![
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 125,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 124,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 123,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 122,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 121,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 120,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 119,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 118,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 117,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 116,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 115,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 114,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 113,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 112,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 111,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 110,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 109,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 108,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 107,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 106,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 105,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 104,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 103,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 102,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 101,
+            },
+            PostItemResponse {
+                canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
+                post_id: 100,
+            },
+        ];
 
-        Ok(res)
+        let res_limited = res
+            .into_iter()
+            .take(limit as usize)
+            .collect::<Vec<PostItemResponse>>();
+
+        Ok(Response::new(FeedResponse { feed: res_limited }))
     }
 }
