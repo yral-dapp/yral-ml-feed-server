@@ -3,6 +3,7 @@ import contextlib
 import datetime
 import logging
 import multiprocessing
+import random
 import socket
 import sys
 import time
@@ -64,7 +65,7 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         self.recommender = SimpleRecommendationV0()
         return
 
-    # implement popular dags here as well -- with filter posts
+    # implement popular dags here as we`ll -- with filter posts
     def get_ml_feed(self, request, context):
         watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
         # successful_plays_uris = [item.video_id for item in request.success_history]
@@ -76,13 +77,47 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         } for item in request.success_history
     ]
         num_results = request.num_results
-        # popular_videos = self.recommender.get_popular_videos(watch_history_uris, num_results) did not add popularity here || need to check why some videos are not being added in the metadata table
+        popular_videos = self.recommender.get_popular_videos(watch_history_uris, num_results)  # did not add popularity here || need to check why some videos are not being added in the metadata table
         recommendations = self.recommender.get_score_aware_recommendation(successful_plays, watch_history_uris, num_results)
-        response = video_recommendation_pb2.MLFeedResponse(
+        response_exploitation = video_recommendation_pb2.MLFeedResponse(
             feed=[video_recommendation_pb2.MLPostItemResponse(post_id=int(recommendation_item['post_id']), canister_id=recommendation_item['canister_id'])
                   for recommendation_item in recommendations
                   ]
         )
+        response_exploration = video_recommendation_pb2.MLFeedResponse(
+            feed=[video_recommendation_pb2.MLPostItemResponse(post_id=int(recommendation_item['post_id']), canister_id=recommendation_item['canister_id'])
+                  for recommendation_item in popular_videos
+                  ]
+        )
+
+        required_sample_size = self.recommender.sample_size
+        current_sample_size = len(successful_plays)
+
+        def calculate_exploit_score(len_sample, len_required): # to be replaced with RL based exploration exploitation
+            if len_required == 0:
+                return 0
+            ratio = len_sample / len_required
+            score = max(0, min(80, ratio * 80))
+            return score
+
+        exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
+        
+        exploitation_sample_size = int(exploit_score / 100 * num_results)
+        exploration_sample_size = num_results - exploitation_sample_size
+
+        # Randomly sample from exploitation and exploration responses
+        sampled_exploitation_feed = random.sample(response_exploitation.feed, exploitation_sample_size)
+        sampled_exploration_feed = random.sample(response_exploration.feed, exploration_sample_size)
+
+        # Combine the sampled feeds
+        combined_feed = sampled_exploitation_feed + sampled_exploration_feed
+        random.shuffle(combined_feed)  # Shuffle to mix exploitation and exploration items
+
+        # Create the final response
+        response = video_recommendation_pb2.MLFeedResponse(feed=combined_feed)
+
+
+
         return response
 
 

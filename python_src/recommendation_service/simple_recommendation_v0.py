@@ -91,14 +91,15 @@ class SimpleRecommendationV0:
         
         fetch_post_ids = f"""
         SELECT
-        MAX(CASE WHEN metadata.name = 'post_id' THEN metadata.value END) AS post_id,
-        MAX(CASE WHEN metadata.name = 'canister_id' THEN metadata.value END) AS canister_id
+        uri, metadata
         FROM `hot-or-not-feed-intelligence.yral_ds.video_embeddings`
         WHERE uri IN ({video_ids_string})
         """
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
-        return mdf
+        mdf['metadata'] = mdf.metadata.apply(lambda x: {i['name']: i['value'] for i in x})
+
+        return mdf.metadata.tolist()
     
     def get_score_aware_recommendation(self, successful_plays, watch_history, num_results=10):
         """
@@ -116,7 +117,8 @@ class SimpleRecommendationV0:
                           keys corresponding to the recommended posts.
         """
         vdf = self.fetch_embeddings([play['video_uri'] for play in successful_plays])
-        
+        if not len(successful_plays):
+            return []
 
         scores = {}
         for play in successful_plays:
