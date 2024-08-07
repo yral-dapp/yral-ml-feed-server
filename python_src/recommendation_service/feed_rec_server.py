@@ -17,7 +17,7 @@ from recommendation_service import video_recommendation_pb2
 from recommendation_service import video_recommendation_pb2_grpc
 
 from utils.upstash_utils import UpstashUtils
-from simple_recommendation_v0 import SimpleRecommendationV0``
+from simple_recommendation_v0 import SimpleRecommendationV0
 
 _LOGGER = logging.getLogger(__name__)
 
