@@ -67,8 +67,10 @@ videos_watched = ['gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4',
     'gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4',
     'gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4']
 successful_plays = videos_watched[:6]
+# successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
 filter_responses = [(1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")]
 
+videos_watched = successful_plays = filter_responses = []
 
 def run(port=50059):
     # Assuming the server is running on localhost and port 50059
