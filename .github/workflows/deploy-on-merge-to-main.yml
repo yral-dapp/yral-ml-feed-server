@@ -37,6 +37,6 @@ jobs:
           UPSTASH_TOKEN: ${{ secrets.UPSTASH_TOKEN }}
           SERVICE_CRED: ${{ secrets.SERVICE_CRED }}
       - name: Deploy a docker container to fly.io
-        run: flyctl deploy --remote-only
+        run: flyctl deploy --remote-only --yes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
