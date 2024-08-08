@@ -29,6 +29,7 @@ cp -r /app .
 cd app
 echo "ls printing files 2"
 ls
+pwd
 
 pip install -r requirements.txt
 
