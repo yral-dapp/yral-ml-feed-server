@@ -22,8 +22,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-musl
-      - name: Setup dfx
-        uses: dfinity/setup-dfx@main
       - run: chmod +x target/x86_64-unknown-linux-musl/release/ml_feed_rust
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Set cloudflare token
