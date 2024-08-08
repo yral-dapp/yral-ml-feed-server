@@ -11,7 +11,7 @@ NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NON
 PORT = '8080'
 
 [processes]
-rust_proc = "./ml_feed_rust"
+rust_proc = "./app/ml_feed_rust"
 python_proc = "/bin/bash -c ./entrypoint.sh $PYTHON_USER"
 
 [[services]]
