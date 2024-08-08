@@ -1,0 +1,44 @@
+name: Deploy to Fly on push to main
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_check:
+    uses: ./.github/workflows/build-check.yml
+    with:
+      publish-artifact: true
+
+  deploy:
+    name: Deploy
+    needs: build_check
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-musl
+      - name: Setup dfx
+        uses: dfinity/setup-dfx@main
+      - run: chmod +x target/x86_64-unknown-linux-musl/release/ml_feed_rust
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Set cloudflare token
+        run: |
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "UPSTASH_URL=$UPSTASH_URL"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "UPSTASH_TOKEN=$UPSTASH_TOKEN"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging" PROJECT="hot-or-not-feed-intelligence"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "SERVICE_CRED=$SERVICE_CRED"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging" GS_VIDEO_BUCKET="yral-videos"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          UPSTASH_URL: ${{ secrets.UPSTASH_URL }}
+          UPSTASH_TOKEN: ${{ secrets.UPSTASH_TOKEN }}
+          SERVICE_CRED: ${{ secrets.SERVICE_CRED }}
+      - name: Deploy a docker container to fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
