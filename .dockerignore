@@ -1,3 +1,3 @@
 fly.toml
 /target/
-!/target/x86_64-unknown-linux-musl/release/ml_feed_rust
+!/target/x86_64-unknown-linux-musl/release/ml-feed-rust
