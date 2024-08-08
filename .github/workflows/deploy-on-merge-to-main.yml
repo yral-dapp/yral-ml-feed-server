@@ -26,11 +26,11 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Set cloudflare token
         run: |
-          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "UPSTASH_URL=$UPSTASH_URL"
-          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "UPSTASH_TOKEN=$UPSTASH_TOKEN"
-          flyctl secrets set --stage --app "yral-ml-feed-server-staging" PROJECT="hot-or-not-feed-intelligence"
-          flyctl secrets set --stage --app "yral-ml-feed-server-staging" "SERVICE_CRED=$SERVICE_CRED"
-          flyctl secrets set --stage --app "yral-ml-feed-server-staging" GS_VIDEO_BUCKET="yral-videos"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" "UPSTASH_URL=$UPSTASH_URL"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" "UPSTASH_TOKEN=$UPSTASH_TOKEN"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" PROJECT="hot-or-not-feed-intelligence"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" "SERVICE_CRED=$SERVICE_CRED"
+          flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" GS_VIDEO_BUCKET="yral-videos"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           UPSTASH_URL: ${{ secrets.UPSTASH_URL }}
