@@ -29,5 +29,5 @@ convert_case = "0.6.0"
 
 
 [[bin]]
-name = "ml_feed_rust"
+name = "ml-feed-rust"
 path = "rust_src/main.rs"

@@ -22,7 +22,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-musl
-      - run: chmod +x target/x86_64-unknown-linux-musl/release/ml_feed_rust
+      - run: chmod +x target/x86_64-unknown-linux-musl/release/ml-feed-rust
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Set cloudflare token
         run: |

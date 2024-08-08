@@ -9,7 +9,7 @@ ENV PYTHON_USER=$NONROOT_USER
 RUN useradd -ms /bin/bash $PYTHON_USER
 
 
-COPY ./target/x86_64-unknown-linux-musl/release/ml_feed_rust ./app/
+COPY ./target/x86_64-unknown-linux-musl/release/ml-feed-rust ./app/
 
 RUN apt-get update \
     && apt-get install -y ca-certificates
