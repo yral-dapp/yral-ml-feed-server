@@ -4,17 +4,25 @@ from concurrent.futures import ThreadPoolExecutor
 from utils.bigquery_utils import BigQueryClient
 from ast import literal_eval
 import logging
+import pandas as pd
+import random
+import grpc
+import video_recommendation_pb2
+import video_recommendation_pb2_grpc
+import random
+
 _LOGGER = logging.getLogger(__name__)
+
+
 
 class SimpleRecommendationV0:
     def __init__(self):
         cfg = Config()
         self.bq = BigQueryClient()
-        self.upstash_db = UpstashUtils()
+        # self.upstash_db = UpstashUtils()
         ### hyper-parameters
         self.sample_size = 10 # number of successful plays to sample
         self.video_bucket_name = cfg.get('video_bucket_name')
-
 
     def fetch_embeddings(self, uri_list):
         """
@@ -27,27 +35,28 @@ class SimpleRecommendationV0:
             pandas.DataFrame: A DataFrame containing the embeddings.
         """
         query = f"""
-        SELECT uri, ml_generate_embedding_result, metadata
+        SELECT uri, post_id, canister_id, timestamp, embedding
         FROM `yral_ds.video_embeddings`
         WHERE uri IN UNNEST({uri_list})
         """
         return self.bq.query(query)
     
-    def fetch_relevant_id(self, vector, watch_history, num_results):
-        filter_query = "uri not in (" + ",".join([f'"{uri}"' for uri in watch_history]) + ")"
-        results = self.upstash_db.query(vector, top_k=num_results, include_metadata=True, filter=filter_query)
-        exploit_ids = [{'video_uri': result.id, 'canister_id': result.metadata['canister_id'], 'post_id': result.metadata['post_id']} for result in results]
-        return exploit_ids
+    # old code for fetching via upstash
+    # def fetch_relevant_id_upstash(self, vector, watch_history, num_results):
+    #     filter_query = "uri not in (" + ",".join([f'"{uri}"' for uri in watch_history]) + ")"
+    #     results = self.upstash_db.query(vector, top_k=num_results, include_metadata=True, filter=filter_query)
+    #     exploit_ids = [{'video_uri': result.id, 'canister_id': result.metadata['canister_id'], 'post_id': result.metadata['post_id']} for result in results]
+    #     return exploit_ids
         
-    def fetch_relevant_ids(self, vector_to_query, watch_history, num_results=10):
-        result = []
-        with ThreadPoolExecutor(max_workers=len(vector_to_query)) as executor:
-            futures = [executor.submit(self.fetch_relevant_id, vector, watch_history=watch_history, num_results=num_results) for vector in vector_to_query]
-            result = []
-            for future in futures:
-                relevant_ids = future.result()
-                result.extend(relevant_ids)
-        return result
+    # def fetch_relevant_ids_upstash(self, vector_to_query, watch_history, num_results=10):
+    #     result = []
+    #     with ThreadPoolExecutor(max_workers=len(vector_to_query)) as executor:
+    #         futures = [executor.submit(self.fetch_relevant_id_upstash, vector, watch_history=watch_history, num_results=num_results) for vector in vector_to_query]
+    #         result = []
+    #         for future in futures:
+    #             relevant_ids = future.result()
+    #             result.extend(relevant_ids)
+    #     return result
     
     # def get_recommendation(self, successful_plays, watch_history):
     #     """
@@ -70,11 +79,43 @@ class SimpleRecommendationV0:
     #     """
     #     vdf = self.fetch_embeddings(successful_plays) # video-dataframe
     #     vdf = vdf[vdf.ml_generate_embedding_result.apply(lambda x: len(x))==1408]
-    #     sample_vdf = vdf if len(vdf) < self.sample_size else vdf.sample(self.sample_size, random_state=None) # to be replaced with better logic once likes and watch duration is available 
-    #     vector_to_query = sample_vdf.ml_generate_embedding_result.tolist()
+    #     sample_uris = vdf if len(vdf) < self.sample_size else vdf.sample(self.sample_size, random_state=None) # to be replaced with better logic once likes and watch duration is available 
+    #     vector_to_query = sample_uris.ml_generate_embedding_result.tolist()
     #     relevant_ids = self.fetch_relevant_ids(vector_to_query, watch_history)
     #     return relevant_ids
-    
+
+
+
+    def sample_successful_plays(self, successful_plays):
+        """
+        Samples a subset of successful plays based on their like status and watch duration.
+
+        This function calculates a score for each video based on whether it was liked and the percentage
+        of the video that was watched. It then performs weighted sampling to select a subset of videos.
+
+        Args:
+            successful_plays (list of dict): A list of dictionaries where each dictionary contains
+                                             'video_uri', 'item_type' (either 'video_duration_watched' or 'like_video'),
+                                             and 'percent_watched' (a float representing the percentage of the video watched).
+
+        Returns:
+            list of str: A list of video URIs that have been sampled based on their scores.
+        """
+        scores = {}
+        for play in successful_plays:
+            like_score = 1 if play['item_type'] == 'like_video' else 0
+            watch_duration_score = play['percent_watched'] / 100 # assuming the values are between 0 and 100 in the cannister
+            score = (like_score + watch_duration_score) / 2
+            scores[play['video_uri']] = score
+
+        sample_size = min(len(set([i['video_uri'] for i in successful_plays])), self.sample_size)
+        uris = list(scores.keys())
+        weights = list(scores.values())
+        vdf_sample = random.choices(uris, weights=weights, k=sample_size)
+
+        return vdf_sample
+
+
     def get_popular_videos(self, watch_history_uris, num_results):
         # Construct the SQL query
         video_ids = [uri.split('/')[-1].split('.')[0] for uri in watch_history_uris] # the script would break if the format is not .mp4
@@ -85,16 +126,16 @@ class SimpleRecommendationV0:
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             WHERE video_id NOT IN ({watched_video_ids})
             ORDER BY global_popularity_score DESC
-            LIMIT {int(3*num_results)}
+            LIMIT {int(4*num_results)}
             """
         else:
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             ORDER BY global_popularity_score DESC
-            LIMIT {int(3*num_results)}
+            LIMIT {int(4*num_results)}
             """
-        rdf = self.bq.query(query) # rdf - recent videos data frame 
+        rdf = self.bq.query(query) # rdf - recent - popular videos data frame 
         video_ids = rdf['video_id'].tolist()
 
         if not len(video_ids):
@@ -114,76 +155,241 @@ class SimpleRecommendationV0:
         _LOGGER.info([f"gs://yral-videos/{i}.mp4" for i in mdf.video_id.tolist()])
         return mdf['post_id canister_id'.split()].to_dict('records')
     
-    def get_score_aware_recommendation(self, successful_plays, watch_history, num_results=10):
+    def get_score_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
         """
-        Generates a list of recommended post IDs based on the successful plays and watch history,
-        applying weighted sampling based on video likes and watch duration.
+        Generates a list of recommended post IDs based on the sample URIs and watch history.
 
         Args:
-            successful_plays (list of dict): A list of dictionaries where each dictionary contains
-                                             'video_uri', 'item_type' (either 'video_duration_watched' or 'like_video'),
-                                             and 'percent_watched' (a float representing the percentage of the video watched).
-            watch_history (list of str): A list of URIs representing the user's watch history.
+            sample_uris (list of str): A list of URIs representing the sample videos.
+            watch_history_uris (list of str): A list of URIs representing the user's watch history.
+            num_results (int, optional): The number of results to return. Defaults to 10.
 
         Returns:
             list of dict: A list of dictionaries, where each dictionary contains 'canister_id' and 'post_id'
                           keys corresponding to the recommended posts.
         """
-        vdf = self.fetch_embeddings([play['video_uri'] for play in successful_plays])
-        if not len(successful_plays):
+        if len(sample_uris) == 0:
             return []
+        
 
-        scores = {}
-        for play in successful_plays:
-            like_score = 1 if play['item_type'] == 'like_video' else 0
-            watch_duration_score = play['percent_watched'] / 100
-            score = (like_score + watch_duration_score) / 2
-            scores[play['video_uri']] = score
-        vdf['scores'] = vdf.uri.map(scores)
+        watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
+        sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
+        search_breadth = 2*((int(num_results**0.5)) + 1)
 
-        vdf = vdf[vdf.ml_generate_embedding_result.apply(lambda x: len(x)) == 1408]
-        scores = vdf.scores.tolist()
 
-        sample_size = min(len(vdf), self.sample_size)
-        if scores:
-            sample_vdf = vdf.sample(n=sample_size, weights=scores)
-        else:
-            sample_vdf = vdf.sample(n=sample_size)
-
-        vector_to_query = sample_vdf.ml_generate_embedding_result.tolist()
-        relevant_ids = self.fetch_relevant_ids(vector_to_query, watch_history, num_results=num_results)
-
-        return relevant_ids
+        vs_query = f"""
+        SELECT base.uri, base.post_id, base.canister_id, distance FROM
+        VECTOR_SEARCH(
+            (
+                SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+                WHERE uri NOT IN ({watch_history_uris_string})
+            ),
+            'embedding',
+            (
+                SELECT embedding
+                FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+                WHERE uri IN ({sample_uris_string})
+            ),
+            top_k => {search_breadth}
+        )
+        ORDER BY distance
+        ;
+        """
+        result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        return result_df.to_dict('records')
 
         
-    
+    def get_recency_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
+        """
+        Generates a list of recommended post IDs based on the successful plays and watch history,
+        applying weighted sampling based on video likes and watch duration.
+
+        Args:
+            sample_uris (list of str): A list of URIs representing the sample videos.
+                                             and 'percent_watched' (a float representing the percentage of the video watched).
+            watch_history_uris (list of str): A list of URIs representing the user's watch history.
+
+        Returns:
+            list of dict: A list of dictionaries, where each dictionary contains 'canister_id' and 'post_id'
+                          keys corresponding to the recommended posts.
+        """
+        if not len(sample_uris):
+            return []
+        search_breadth = 2*((int(num_results**0.5)) + 1)
+        watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
+        sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
+        vs_query = f"""
+        SELECT base.uri, base.post_id, base.canister_id, base.timestamp, distance FROM
+        VECTOR_SEARCH(
+            (
+            SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+            WHERE uri NOT IN ({watch_history_uris_string})
+            AND TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY)
+            and post_id is not null 
+            and canister_id is not null 
+            ),
+            'embedding',
+            (
+            SELECT embedding
+            FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            WHERE uri IN ({sample_uris_string})
+            and post_id is not null
+            and canister_id is not null
+            ),
+            top_k => {search_breadth},
+            options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
+
+        )
+        ORDER BY distance 
+        """
+        result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        return result_df.to_dict('records')
+
+    def get_collated_recommendation(self, successful_plays, watch_history_uris, num_results=10):
+        """
+        Generates a list of recommended post IDs based on the successful plays and watch history,
+        applying weighted sampling based on video likes and watch duration.
+        """
+        sample_uris = self.sample_successful_plays(successful_plays) if len(successful_plays) > 0 else []
+        exploit_recommendation = self.get_score_aware_recommendation(sample_uris, watch_history_uris, num_results)
+        recency_recommendation = self.get_recency_aware_recommendation(sample_uris, watch_history_uris, num_results)
+        popular_recommendation = self.get_popular_videos(watch_history_uris, num_results)
+
+        def create_feed_response(feed_items):
+            return video_recommendation_pb2.MLFeedResponse(
+                feed=[
+                    video_recommendation_pb2.MLPostItemResponse(
+                        post_id=item['post_id'],
+                        canister_id=item['canister_id']
+                    )
+                    for item in feed_items
+                ]
+            )
+        
+        response_exploitation = [
+            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
+            for item in exploit_recommendation
+        ]
+        response_exploration = [
+            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
+            for item in popular_recommendation
+        ]
+        response_recency = [
+            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
+            for item in recency_recommendation
+        ]
+
+        required_sample_size = self.sample_size
+        current_sample_size = len(successful_plays)
+
+        def calculate_exploit_score(len_sample, len_required): # to be replaced with RL based exploration exploitation
+            if len_required == 0:
+                return 0
+            ratio = len_sample / len_required
+            score = max(0, min(90, ratio * 90))
+            return score
+
+        exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
+        exploitation_sample_size = int(exploit_score / 100 * num_results)
+        exploration_sample_size = num_results - exploitation_sample_size 
+        recency_sample_size = int(exploitation_sample_size/3)
+        exploitatoin_sample_size = exploitation_sample_size - recency_sample_size
+
+        _LOGGER.warning(f"Exploitation sample size: {exploitation_sample_size}, Exploration sample size: {exploration_sample_size}, Recency sample size: {recency_sample_size}")
+
+        if len(response_exploitation) < exploitatoin_sample_size:
+            _LOGGER.warning(f"Could not obtain the desired exploitation sample size of {exploitatoin_sample_size}; returning all {len(response_exploitation)} items.")
+            sampled_exploitation_feed = response_exploitation
+        else:
+            sampled_exploitation_feed = random.sample(response_exploitation, exploitatoin_sample_size)
+
+        if len(response_recency) < recency_sample_size:
+            _LOGGER.warning(f"Could not obtain the desired recency sample size of {recency_sample_size}; returning all {len(response_recency)} items.")
+            sampled_recency_feed = response_recency
+        else:
+            sampled_recency_feed = random.sample(response_recency, recency_sample_size)
+
+        if len(response_exploration) < exploration_sample_size:
+            _LOGGER.warning(f"Could not obtain the desired exploration sample size of {exploration_sample_size}; returning all {len(response_exploration)} items.")
+            sampled_exploration_feed = response_exploration
+        else:
+            sampled_exploration_feed = random.sample(response_exploration, exploration_sample_size)
+
+        combined_feed = sampled_exploitation_feed + sampled_recency_feed + sampled_exploration_feed
+        random.shuffle(combined_feed)
+
+        response = create_feed_response(combined_feed)
+        return response
+
+
 
 
 if __name__ == '__main__':
+
+    _LOGGER.setLevel(logging.INFO)
+
+    outer_videos_watched = ['gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4',
+        'gs://yral-videos/a8e1035908cc4e6e84f1792f8d655f25.mp4',
+        'gs://yral-videos/9072dc569fe24c6d8ed7504d111cd71f.mp4',
+        'gs://yral-videos/5054ef5791024da1977b446165aa9fb6.mp4',
+        'gs://yral-videos/831fc4a20f974090aa7da3bedc9b0499.mp4',
+        'gs://yral-videos/17e4f909dbf14a0b8b13e2b67ea5e54f.mp4',
+        'gs://yral-videos/19d5ab6b30914e288db3f8b00dc5ab30.mp4',
+        'gs://yral-videos/02b0c85d4da34c9aba1cf48b3b476ce8.mp4',
+        'gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4',
+        'gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4']*10
+
+    outer_successful_plays = outer_videos_watched[:10]
+    # outer_successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
+    outer_filter_responses = [(1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")]
+    outer_num_results = 10
+
+    # input_request_parameters
+
+    watch_history=[
+                    video_recommendation_pb2.WatchHistoryItem(video_id=i)
+                    for i in outer_videos_watched
+                ]
+
+    success_history=[
+                    video_recommendation_pb2.SuccessHistoryItem(video_id=i, item_type='like_video', percent_watched=random.random())
+                    for i in outer_successful_plays
+                ]
+
+    filter_posts=[
+                    video_recommendation_pb2.MLPostItem(post_id=post_id, canister_id=canister_id, video_id=video_id)
+                    for post_id, canister_id, video_id in outer_filter_responses
+                ]
+
+    # input requests
+    request = video_recommendation_pb2.MLFeedRequest(
+        canister_id="test_canister",
+        watch_history=watch_history,
+        success_history=success_history,
+        filter_posts=filter_posts,
+        num_results=outer_num_results
+    )
+
+    # process_request
+    successful_plays_ = [
+            {
+                'video_uri': item.video_id,
+                'item_type': item.item_type,
+                'percent_watched': item.percent_watched
+            } for item in request.success_history
+        ]
+    outer_watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
+    num_results = request.num_results
+    
     import time
+
+    recommender = SimpleRecommendationV0()
     start_time = time.time()
-
-    videos_watched = ['gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4',
-    'gs://yral-videos/a8e1035908cc4e6e84f1792f8d655f25.mp4',
-    'gs://yral-videos/9072dc569fe24c6d8ed7504d111cd71f.mp4',
-    'gs://yral-videos/5054ef5791024da1977b446165aa9fb6.mp4',
-    'gs://yral-videos/831fc4a20f974090aa7da3bedc9b0499.mp4',
-    'gs://yral-videos/17e4f909dbf14a0b8b13e2b67ea5e54f.mp4',
-    'gs://yral-videos/19d5ab6b30914e288db3f8b00dc5ab30.mp4',
-    'gs://yral-videos/02b0c85d4da34c9aba1cf48b3b476ce8.mp4',
-    'gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4',
-    'gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4']
-
-    rec = SimpleRecommendationV0()
-    successful_plays = videos_watched[:6]
-    result_exploitation = rec.get_recommendation(successful_plays=successful_plays, watch_history=videos_watched, num_results=10)
-    result_exploration = rec.get_popular_videos(watch_history_uris=videos_watched, num_results=10)
+    feed = recommender.get_collated_recommendation(successful_plays_, outer_watch_history_uris, num_results)
     end_time = time.time()
-    time_taken = end_time - start_time
-    print(f"Time taken: {time_taken:.2f} seconds")
-    print(f"Exploitation: {len(result_exploitation)}")
-    print(result_exploitation)
-    print(f"Exploration: {len(result_exploration)}")
-    print(result_exploration)
 
-        
+    _LOGGER.info(f"Time required to get the recommendation: {end_time - start_time:.2f} seconds")
+
+    for item in feed.feed:
+        print(item)
+

@@ -77,63 +77,8 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         } for item in request.success_history
     ]
         num_results = request.num_results
-        popular_videos = self.recommender.get_popular_videos(watch_history_uris, num_results) 
-        recommendations = self.recommender.get_score_aware_recommendation(successful_plays, watch_history_uris, num_results)
-        def create_feed_response(feed_items):
-            return video_recommendation_pb2.MLFeedResponse(
-                feed=[
-                    video_recommendation_pb2.MLPostItemResponse(**item)
-                    for item in feed_items
-                ]
-            )
 
-        response_exploitation = [
-            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
-            for item in recommendations
-        ]
-        response_exploration = [
-            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
-            for item in popular_videos
-        ]
-
-        required_sample_size = self.recommender.sample_size
-        current_sample_size = len(successful_plays)
-
-        def calculate_exploit_score(len_sample, len_required): # to be replaced with RL based exploration exploitation
-            if len_required == 0:
-                return 0
-            ratio = len_sample / len_required
-            score = max(0, min(80, ratio * 80))
-            return score
-
-        exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
-        
-        exploitation_sample_size = int(exploit_score / 100 * num_results)
-        exploration_sample_size = num_results - exploitation_sample_size
-
-        print(f"Exploitation sample size: {exploitation_sample_size}")
-        print(f"Exploration sample size: {exploration_sample_size}")
-
-        if len(response_exploitation) < exploitation_sample_size:
-            _LOGGER.warning(f"Could not obtain the desired exploitation sample size of {exploitation_sample_size}; returning all {len(response_exploitation)} items.")
-            sampled_exploitation_feed = response_exploitation
-        else:
-            sampled_exploitation_feed = random.sample(response_exploitation, exploitation_sample_size)
-
-        if len(response_exploration) < exploration_sample_size:
-            _LOGGER.warning(f"Could not obtain the desired exploration sample size of {exploration_sample_size}; returning all {len(response_exploration)} items.")
-            sampled_exploration_feed = response_exploration
-        else:
-            sampled_exploration_feed = random.sample(response_exploration, exploration_sample_size)
-
-        combined_feed = sampled_exploitation_feed + sampled_exploration_feed
-        random.shuffle(combined_feed)
-        
-        response = create_feed_response(combined_feed)
-
-
-
-        return response
+        return self.recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
 
 
 def _wait_forever(server):
