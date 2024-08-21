@@ -66,10 +66,11 @@ videos_watched = ['gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4',
     'gs://yral-videos/02b0c85d4da34c9aba1cf48b3b476ce8.mp4',
     'gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4',
     'gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4'] 
-successful_plays = videos_watched[:6]
-# successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
+successful_plays = videos_watched[:]
+successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
 filter_responses = [(1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")]
 
+# videos_watched = successful_plays = filter_responses = []
 # videos_watched = successful_plays = filter_responses = []
 
 def run(port=50059):
@@ -95,7 +96,7 @@ def run(port=50059):
                 video_recommendation_pb2.MLPostItem(post_id=post_id, canister_id=canister_id, video_id=video_id)
                 for post_id, canister_id, video_id in filter_responses
             ],
-            num_results=5
+            num_results=25
         )
         try:
             response = stub.get_ml_feed(request)
@@ -103,5 +104,10 @@ def run(port=50059):
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
 
+
 if __name__ == '__main__':
+    import time
+    start_time = time.time()
     run()
+    end_time = time.time()
+    print(f"Time required to run main: {end_time - start_time} seconds")

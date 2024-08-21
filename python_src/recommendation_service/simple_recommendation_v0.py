@@ -230,7 +230,7 @@ class SimpleRecommendationV0:
             limit {num_results}
             """
 
-        result_df = self.bq.query(query)
+        result_df = self.bq.query(query).drop_duplicates(subset=['uri'])
         return result_df.to_dict('records')
 
 
@@ -346,7 +346,15 @@ class SimpleRecommendationV0:
                             [exploration_score] * len(response_exploration) + 
                             [random_recent_score] * len(response_random_recent))
         
+        # for debugging
         sampled_feed = random.choices(combined_feed, weights=combined_weights, k=num_results)
+        
+        exploitation_count = sum(1 for item in sampled_feed if item in response_exploitation)
+        recency_count = sum(1 for item in sampled_feed if item in response_recency)
+        exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
+        random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
+        
+        _LOGGER.info(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
 
         
 
