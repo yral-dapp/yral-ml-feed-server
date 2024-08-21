@@ -237,7 +237,7 @@ class SimpleRecommendationV0:
     def get_recency_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
         """
         Generates a list of recommended post IDs based on the successful plays and watch history,
-        applying weighted sampling based on video likes and watch duration.
+        applying weighted sampling based on video likes and watch duration. Maintains the search in the recently uploaded videos.
 
         Args:
             sample_uris (list of str): A list of URIs representing the sample videos.
@@ -354,15 +354,9 @@ class SimpleRecommendationV0:
         exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
         random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
         
-        _LOGGER.info(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
-
+        _LOGGER.warning(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
         
-
         _LOGGER.warning(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
-
-        print(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
-
-        random.shuffle(sampled_feed)
 
         print(f"""Videos recommended: {len(sampled_feed)}""")
         response = create_feed_response(sampled_feed)
