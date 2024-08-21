@@ -152,7 +152,6 @@ class SimpleRecommendationV0:
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
-        _LOGGER.info([f"gs://yral-videos/{i}.mp4" for i in mdf.video_id.tolist()])
         return mdf['post_id canister_id'.split()].to_dict('records')
     
     def get_score_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
@@ -349,12 +348,13 @@ class SimpleRecommendationV0:
         # for debugging
         sampled_feed = random.choices(combined_feed, weights=combined_weights, k=num_results)
         
+        _LOGGER.warning(f"Length of returned feed: {len(sampled_feed)}")
         exploitation_count = sum(1 for item in sampled_feed if item in response_exploitation)
         recency_count = sum(1 for item in sampled_feed if item in response_recency)
         exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
         random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
         
-        _LOGGER.info(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
+        _LOGGER.warning(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
         
         _LOGGER.warning(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
 
