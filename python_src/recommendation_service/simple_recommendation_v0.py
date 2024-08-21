@@ -13,7 +13,7 @@ import random
 
 _LOGGER = logging.getLogger(__name__)
 
-
+_LOGGER.setLevel(logging.INFO)
 
 class SimpleRecommendationV0:
     def __init__(self):
@@ -354,7 +354,7 @@ class SimpleRecommendationV0:
         exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
         random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
         
-        _LOGGER.warning(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
+        _LOGGER.info(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
         
         _LOGGER.warning(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
 
