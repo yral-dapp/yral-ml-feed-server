@@ -21,7 +21,7 @@ class SimpleRecommendationV0:
         self.bq = BigQueryClient()
         # self.upstash_db = UpstashUtils()
         ### hyper-parameters
-        self.sample_size = 10 # number of successful plays to sample
+        self.sample_size = 5 # number of successful plays to sample
         self.video_bucket_name = cfg.get('video_bucket_name')
 
     def fetch_embeddings(self, uri_list):
@@ -183,6 +183,8 @@ class SimpleRecommendationV0:
             (
                 SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
                 WHERE uri NOT IN ({watch_history_uris_string})
+                and post_id is not null 
+                and canister_id is not null 
             ),
             'embedding',
             (
@@ -198,7 +200,40 @@ class SimpleRecommendationV0:
         result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
         return result_df.to_dict('records')
 
-        
+    def get_random_recent_recommendation(self, sample_uris, watch_history_uris, num_results=10):
+        """
+
+        """
+        if not len(watch_history_uris):
+            query = f"""
+            with recent_uploads as (
+            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            limit {4*num_results}
+            )
+            select * from recent_uploads
+            order by RAND()
+            limit {num_results}
+            """
+
+        else:
+            watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
+            query = f"""
+            with recent_uploads as (
+            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            WHERE uri NOT IN ({watch_history_uris_string})
+            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            limit {4*num_results}
+            )
+            select * from recent_uploads
+            order by RAND()
+            limit {num_results}
+            """
+
+        result_df = self.bq.query(query)
+        return result_df.to_dict('records')
+
+
     def get_recency_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
         """
         Generates a list of recommended post IDs based on the successful plays and watch history,
@@ -224,9 +259,9 @@ class SimpleRecommendationV0:
             (
             SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
             WHERE uri NOT IN ({watch_history_uris_string})
+            AND post_id is not null 
+            AND canister_id is not null 
             AND TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY)
-            and post_id is not null 
-            and canister_id is not null 
             ),
             'embedding',
             (
@@ -251,10 +286,17 @@ class SimpleRecommendationV0:
         applying weighted sampling based on video likes and watch duration.
         """
         sample_uris = self.sample_successful_plays(successful_plays) if len(successful_plays) > 0 else []
-        exploit_recommendation = self.get_score_aware_recommendation(sample_uris, watch_history_uris, num_results)
-        recency_recommendation = self.get_recency_aware_recommendation(sample_uris, watch_history_uris, num_results)
-        popular_recommendation = self.get_popular_videos(watch_history_uris, num_results)
-
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_exploit = executor.submit(self.get_score_aware_recommendation, sample_uris, watch_history_uris, num_results)
+            future_recency = executor.submit(self.get_recency_aware_recommendation, sample_uris, watch_history_uris, num_results)
+            future_popular = executor.submit(self.get_popular_videos, watch_history_uris, num_results)
+            future_random_recent = executor.submit(self.get_random_recent_recommendation, sample_uris, watch_history_uris, num_results)
+        
+        exploit_recommendation = future_exploit.result()
+        recency_recommendation = future_recency.result()
+        popular_recommendation = future_popular.result()
+        random_recent_recommendation = future_random_recent.result()
+        
         def create_feed_response(feed_items):
             return video_recommendation_pb2.MLFeedResponse(
                 feed=[
@@ -265,7 +307,7 @@ class SimpleRecommendationV0:
                     for item in feed_items
                 ]
             )
-        
+
         response_exploitation = [
             {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
             for item in exploit_recommendation
@@ -277,6 +319,10 @@ class SimpleRecommendationV0:
         response_recency = [
             {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
             for item in recency_recommendation
+        ]
+        response_random_recent = [
+            {'post_id': int(item['post_id']), 'canister_id': item['canister_id']}
+            for item in random_recent_recommendation
         ]
 
         required_sample_size = self.sample_size
@@ -290,35 +336,28 @@ class SimpleRecommendationV0:
             return score
 
         exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
-        exploitation_sample_size = int(exploit_score / 100 * num_results)
-        exploration_sample_size = num_results - exploitation_sample_size 
-        recency_sample_size = int(exploitation_sample_size/3)
-        exploitatoin_sample_size = exploitation_sample_size - recency_sample_size
+        exploration_score = 100 - exploit_score
 
-        _LOGGER.warning(f"Exploitation sample size: {exploitation_sample_size}, Exploration sample size: {exploration_sample_size}, Recency sample size: {recency_sample_size}")
+        exploitation_score, recency_exploitation_score, exploration_score, random_recent_score = exploit_score/2, exploit_score/2, exploration_score*(1/4), exploration_score*(3/4)
+        
+        combined_feed = response_exploitation + response_recency + response_exploration + response_random_recent
+        combined_weights = ([exploitation_score] * len(response_exploitation) + 
+                            [recency_exploitation_score] * len(response_recency) + 
+                            [exploration_score] * len(response_exploration) + 
+                            [random_recent_score] * len(response_random_recent))
+        
+        sampled_feed = random.choices(combined_feed, weights=combined_weights, k=num_results)
 
-        if len(response_exploitation) < exploitatoin_sample_size:
-            _LOGGER.warning(f"Could not obtain the desired exploitation sample size of {exploitatoin_sample_size}; returning all {len(response_exploitation)} items.")
-            sampled_exploitation_feed = response_exploitation
-        else:
-            sampled_exploitation_feed = random.sample(response_exploitation, exploitatoin_sample_size)
+        
 
-        if len(response_recency) < recency_sample_size:
-            _LOGGER.warning(f"Could not obtain the desired recency sample size of {recency_sample_size}; returning all {len(response_recency)} items.")
-            sampled_recency_feed = response_recency
-        else:
-            sampled_recency_feed = random.sample(response_recency, recency_sample_size)
+        _LOGGER.warning(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
 
-        if len(response_exploration) < exploration_sample_size:
-            _LOGGER.warning(f"Could not obtain the desired exploration sample size of {exploration_sample_size}; returning all {len(response_exploration)} items.")
-            sampled_exploration_feed = response_exploration
-        else:
-            sampled_exploration_feed = random.sample(response_exploration, exploration_sample_size)
+        print(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
 
-        combined_feed = sampled_exploitation_feed + sampled_recency_feed + sampled_exploration_feed
-        random.shuffle(combined_feed)
+        random.shuffle(sampled_feed)
 
-        response = create_feed_response(combined_feed)
+        print(f"""Videos recommended: {len(sampled_feed)}""")
+        response = create_feed_response(sampled_feed)
         return response
 
 
@@ -342,7 +381,10 @@ if __name__ == '__main__':
     outer_successful_plays = outer_videos_watched[:10]
     # outer_successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
     outer_filter_responses = [(1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")]
-    outer_num_results = 10
+
+    outer_videos_watched = []
+    outer_successful_plays = []
+    outer_num_results = 25
 
     # input_request_parameters
 
