@@ -53,7 +53,7 @@ impl MlFeed for MLFeedService {
             .map_or(vec![], |x| x);
 
         let mut client = match MlFeedClient::connect(
-            "http://python_proc.process.yral-ml-feed-server-staging-v2.internal:50059",
+            "http://python_proc.process.yral-ml-feed-server.internal:50059",
         )
         .await
         {
