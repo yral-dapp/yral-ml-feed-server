@@ -39,4 +39,4 @@ jobs:
       - name: Deploy a docker container to fly.io
         run: flyctl deploy --remote-only --yes
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.YRAL_GPU_COMPUTE_TASKS_GITHUB_ACTION_FLY_IO_DEPLOYMENT_TOKEN }}
