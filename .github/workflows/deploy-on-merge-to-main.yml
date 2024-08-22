@@ -32,7 +32,7 @@ jobs:
           flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" "SERVICE_CRED=$SERVICE_CRED"
           flyctl secrets set --stage --app "yral-ml-feed-server-staging-v2" GS_VIDEO_BUCKET="yral-videos"
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.YRAL_GPU_COMPUTE_TASKS_GITHUB_ACTION_FLY_IO_DEPLOYMENT_TOKEN }}
           UPSTASH_URL: ${{ secrets.UPSTASH_URL }}
           UPSTASH_TOKEN: ${{ secrets.UPSTASH_TOKEN }}
           SERVICE_CRED: ${{ secrets.SERVICE_CRED }}

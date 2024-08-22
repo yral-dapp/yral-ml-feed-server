@@ -1,4 +1,4 @@
-app = 'yral-ml-feed-server-staging-v2'
+app = 'yral-ml-feed-server'
 primary_region = 'sin'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
