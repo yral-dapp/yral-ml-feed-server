@@ -337,7 +337,7 @@ class SimpleRecommendationV0:
         exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
         exploration_score = 100 - exploit_score
 
-        exploitation_score, recency_exploitation_score, exploration_score, random_recent_score = exploit_score/2, exploit_score/2, exploration_score*(1/4), exploration_score*(3/4)
+        exploitation_score, recency_exploitation_score, exploration_score, random_recent_score = exploit_score/2, exploit_score/2, exploration_score*(3/4), exploration_score*(1/4)
         
         combined_feed = response_exploitation + response_recency + response_exploration + response_random_recent
         combined_weights = ([exploitation_score] * len(response_exploitation) + 
