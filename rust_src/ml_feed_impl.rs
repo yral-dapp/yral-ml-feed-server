@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use candid::Principal;
@@ -123,6 +124,13 @@ impl MlFeed for MLFeedService {
                 canister_id: x.canister_id.clone(),
                 post_id: x.post_id as u32,
             })
+            .collect::<Vec<PostItemResponse>>();
+
+        // filter out duplicates
+        let mut seen = HashSet::new();
+        let response_items = response_items
+            .into_iter()
+            .filter(|e| seen.insert((e.canister_id.clone(), e.post_id)))
             .collect::<Vec<PostItemResponse>>();
 
         return Ok(Response::new(FeedResponse {
