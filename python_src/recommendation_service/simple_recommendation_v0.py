@@ -344,10 +344,23 @@ class SimpleRecommendationV0:
                             [recency_exploitation_score] * len(response_recency) + 
                             [exploration_score] * len(response_exploration) + 
                             [random_recent_score] * len(response_random_recent))
+        combined_feed_with_weights = list(zip(combined_feed, combined_weights))
         
-        # for debugging
+
+        seen = {}
+        for item, weight in combined_feed_with_weights:
+            identifier = f"{item['post_id']}_{item['canister_id']}"
+            if identifier not in seen or seen[identifier][1] < weight:
+                seen[identifier] = (item, weight)
+        
+
+        unique_combined_feed_with_weights = list(seen.values())
+        combined_feed, combined_weights = zip(*unique_combined_feed_with_weights)
+        
+
         sampled_feed = random.choices(combined_feed, weights=combined_weights, k=num_results)
         
+        # for debugging
         _LOGGER.warning(f"Length of returned feed: {len(sampled_feed)}")
         exploitation_count = sum(1 for item in sampled_feed if item in response_exploitation)
         recency_count = sum(1 for item in sampled_feed if item in response_recency)
