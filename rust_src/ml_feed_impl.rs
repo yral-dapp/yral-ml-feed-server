@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::env;
 use std::sync::Arc;
 
 use candid::Principal;
@@ -7,9 +8,12 @@ use ml_feed::{FeedRequest, FeedResponse, PostItem, PostItemResponse};
 use ml_feed::ml_feed_server::MlFeed;
 use ml_feed_py::ml_feed_client::MlFeedClient;
 use ml_feed_py::MlFeedRequest;
+use off_chain::off_chain_canister_client::OffChainCanisterClient;
+use tonic::metadata::MetadataValue;
+use tonic::transport::Channel;
 use tonic::{Request, Response, Status};
 
-use crate::consts::ML_FEED_PY_SERVER;
+use crate::consts::{ML_FEED_PY_SERVER, OFF_CHAIN_AGENT};
 use crate::utils::{to_rfc3339, to_rfc3339_did_systemtime};
 use crate::{canister, AppState};
 
@@ -23,6 +27,10 @@ pub mod ml_feed_py {
     tonic::include_proto!("ml_feed_py");
     pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
         tonic::include_file_descriptor_set!("ml_feed_py_descriptor");
+}
+
+pub mod off_chain {
+    tonic::include_proto!("offchain_canister");
 }
 
 pub struct MLFeedService {
@@ -54,7 +62,7 @@ impl MlFeed for MLFeedService {
             .map_or(vec![], |x| x);
 
         let mut client = match MlFeedClient::connect(
-            "http://python_proc.process.yral-ml-feed-server.internal:50059",
+            "http://python_proc.process.yral-ml-feed-server.internal:50059", // http://python_proc.process.yral-ml-feed-server.internal:50059"
         )
         .await
         {
@@ -133,122 +141,60 @@ impl MlFeed for MLFeedService {
             .filter(|e| seen.insert((e.canister_id.clone(), e.post_id)))
             .collect::<Vec<PostItemResponse>>();
 
+        let response_items1 = response_items.clone();
+        tokio::spawn(async move {
+            send_to_offchain(canister_id, response_items1).await;
+        });
+
         return Ok(Response::new(FeedResponse {
             feed: response_items,
         }));
+    }
+}
 
-        // let res = vec![
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 125,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 124,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 123,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 122,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 121,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 120,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 119,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 118,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 117,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 116,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 115,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 114,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 113,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 112,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 111,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 110,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 109,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 108,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 107,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 106,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 105,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 104,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 103,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 102,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 101,
-        //     },
-        //     PostItemResponse {
-        //         canister_id: "76qol-iiaaa-aaaak-qelkq-cai".to_string(),
-        //         post_id: 100,
-        //     },
-        // ];
+pub async fn send_to_offchain(canister_id_principal_str: String, items: Vec<PostItemResponse>) {
+    let channel = Channel::from_static(OFF_CHAIN_AGENT)
+        .connect()
+        .await
+        .expect("channel creation failed");
 
-        // let res_limited = res
-        //     .into_iter()
-        //     .take(limit as usize)
-        //     .collect::<Vec<PostItemResponse>>();
+    let grpc_offchain_token =
+        env::var("GRPC_OFF_CHAIN_JWT_TOKEN").expect("GRPC_OFF_CHAIN_JWT_TOKEN must be set");
 
-        // Ok(Response::new(FeedResponse { feed: res_limited }))
+    let token: MetadataValue<_> = format!("Bearer {}", grpc_offchain_token)
+        .parse()
+        .expect("invalid metadata value");
+
+    let mut client =
+        OffChainCanisterClient::with_interceptor(channel, move |mut req: Request<()>| {
+            req.metadata_mut().insert("authorization", token.clone());
+            Ok(req)
+        });
+
+    let offchain_items = items
+        .into_iter()
+        .map(|x| off_chain::MlFeedCacheItem {
+            post_id: x.post_id as u64,
+            canister_id: x.canister_id,
+            video_id: "".to_string(),
+            creator_principal_id: "".to_string(),
+        })
+        .collect::<Vec<off_chain::MlFeedCacheItem>>();
+
+    let request = tonic::Request::new(off_chain::UpdateMlFeedCacheRequest {
+        user_canister_id: canister_id_principal_str,
+        items: offchain_items,
+    });
+
+    let response = client.update_ml_feed_cache(request).await.map_err(|e| {
+        Status::internal(format!(
+            "Failed to get update_ml_feed_cache response: {}",
+            e
+        ))
+    });
+
+    match response {
+        Ok(_) => (),
+        Err(e) => println!("Failed to get update_ml_feed_cache response: {}", e),
     }
 }
