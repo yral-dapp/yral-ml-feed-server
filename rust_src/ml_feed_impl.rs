@@ -10,7 +10,7 @@ use ml_feed_py::ml_feed_client::MlFeedClient;
 use ml_feed_py::MlFeedRequest;
 use off_chain::off_chain_canister_client::OffChainCanisterClient;
 use tonic::metadata::MetadataValue;
-use tonic::transport::Channel;
+use tonic::transport::{Channel, ClientTlsConfig};
 use tonic::{Request, Response, Status};
 
 use crate::consts::{ML_FEED_PY_SERVER, OFF_CHAIN_AGENT};
@@ -153,7 +153,10 @@ impl MlFeed for MLFeedService {
 }
 
 pub async fn send_to_offchain(canister_id_principal_str: String, items: Vec<PostItemResponse>) {
+    let tls_config = ClientTlsConfig::new().with_webpki_roots();
     let channel = Channel::from_static(OFF_CHAIN_AGENT)
+        .tls_config(tls_config)
+        .expect("Couldn't update TLS config for off-chain agent")
         .connect()
         .await
         .expect("channel creation failed");

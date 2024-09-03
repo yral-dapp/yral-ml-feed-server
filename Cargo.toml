@@ -8,7 +8,7 @@ prost = "0.13.0"
 anyhow = "1.0.86"
 http = "0.2.11"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
-tonic = "0.12.0"
+tonic = { version = "0.12.0", features = ["tls", "tls-webpki-roots"] }
 tonic-web = "0.12.0"
 tower-http = { version = "0.4.4", default-features = false, features = [
     "cors",
