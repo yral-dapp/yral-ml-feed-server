@@ -115,7 +115,7 @@ impl MlFeed for MLFeedService {
             watch_history: watch_history_items,
             success_history: success_history_items,
             filter_posts: filter_items,
-            num_results: req_obj.num_results,
+            num_results: req_obj.num_results + 15,
         });
 
         let response = client
@@ -136,15 +136,21 @@ impl MlFeed for MLFeedService {
 
         // filter out duplicates
         let mut seen = HashSet::new();
-        let response_items = response_items
+        let mut response_items = response_items
             .into_iter()
             .filter(|e| seen.insert((e.canister_id.clone(), e.post_id)))
             .collect::<Vec<PostItemResponse>>();
 
-        let response_items1 = response_items.clone();
+        // get last 15 items from response_items without split_off
+        let at = response_items.len() - 15;
+        let mut response_items1 = response_items.iter().skip(at).cloned().collect::<Vec<_>>();
         tokio::spawn(async move {
+            response_items1.reverse();
             send_to_offchain(canister_id, response_items1).await;
         });
+
+        // take first limit items
+        response_items.truncate(limit as usize);
 
         return Ok(Response::new(FeedResponse {
             feed: response_items,
