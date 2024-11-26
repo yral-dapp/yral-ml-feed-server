@@ -3,11 +3,11 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use anyhow::Result;
 use canister::init_agent;
 use consts::ML_FEED_PY_SERVER;
-use http::header::HeaderName;
 use ic_agent::Agent;
 use ml_feed_impl::{
     ml_feed::ml_feed_server::MlFeedServer, ml_feed_py::ml_feed_client::MlFeedClient, MLFeedService,
 };
+use tonic::codegen::http::header::HeaderName;
 use tonic::transport::Server;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -49,37 +49,43 @@ async fn main() -> Result<()> {
 
     println!("MlFeedServer listening on {}", addr);
 
-    Server::builder()
-        .add_service(tonic_web::enable(mlfeed_server))
-        .serve(addr)
-        .await?;
+    #[cfg(not(feature = "local-bin"))]
+    {
+        Server::builder()
+            .add_service(tonic_web::enable(mlfeed_server))
+            .serve(addr)
+            .await?;
+    }
 
-    // Server::builder()
-    //     .accept_http1(true)
-    //     .layer(
-    //         CorsLayer::new()
-    //             .allow_origin(AllowOrigin::mirror_request())
-    //             .allow_credentials(true)
-    //             .max_age(DEFAULT_MAX_AGE)
-    //             .expose_headers(
-    //                 DEFAULT_EXPOSED_HEADERS
-    //                     .iter()
-    //                     .cloned()
-    //                     .map(HeaderName::from_static)
-    //                     .collect::<Vec<HeaderName>>(),
-    //             )
-    //             .allow_headers(
-    //                 DEFAULT_ALLOW_HEADERS
-    //                     .iter()
-    //                     .cloned()
-    //                     .map(HeaderName::from_static)
-    //                     .collect::<Vec<HeaderName>>(),
-    //             ),
-    //     )
-    //     .layer(GrpcWebLayer::new())
-    //     .add_service(mlfeed_server)
-    //     .serve(addr)
-    //     .await?;
+    #[cfg(feature = "local-bin")]
+    {
+        Server::builder()
+            .accept_http1(true)
+            .layer(
+                CorsLayer::new()
+                    .allow_origin(AllowOrigin::mirror_request())
+                    .allow_credentials(true)
+                    .max_age(DEFAULT_MAX_AGE)
+                    .expose_headers(
+                        DEFAULT_EXPOSED_HEADERS
+                            .iter()
+                            .cloned()
+                            .map(HeaderName::from_static)
+                            .collect::<Vec<HeaderName>>(),
+                    )
+                    .allow_headers(
+                        DEFAULT_ALLOW_HEADERS
+                            .iter()
+                            .cloned()
+                            .map(HeaderName::from_static)
+                            .collect::<Vec<HeaderName>>(),
+                    ),
+            )
+            .layer(GrpcWebLayer::new())
+            .add_service(mlfeed_server)
+            .serve(addr)
+            .await?;
+    }
 
     Ok(())
 }

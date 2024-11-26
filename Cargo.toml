@@ -10,7 +10,7 @@ http = "0.2.11"
 tokio = { version = "1.36.0", features = ["macros", "rt-multi-thread"] }
 tonic = { version = "0.12.0", features = ["tls", "tls-webpki-roots"] }
 tonic-web = "0.12.0"
-tower-http = { version = "0.4.4", default-features = false, features = [
+tower-http = { version = "0.6.2", default-features = false, features = [
     "cors",
 ] }
 candid = "0.10.6"
@@ -31,3 +31,6 @@ convert_case = "0.6.0"
 [[bin]]
 name = "ml-feed-rust"
 path = "rust_src/main.rs"
+
+[features]
+local-bin = []
