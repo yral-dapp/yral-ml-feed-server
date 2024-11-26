@@ -19,6 +19,7 @@ from recommendation_service import video_recommendation_pb2_grpc
 
 from utils.upstash_utils import UpstashUtils
 from simple_recommendation_v0 import SimpleRecommendationV0
+from clean_recommendation_v0 import CleanRecommendationV0
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ _AUTH_HEADER_KEY = "authorization"
 class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
     def __init__(self):
         self.recommender = SimpleRecommendationV0()
+        self.clean_recommender = CleanRecommendationV0()
         return
 
     # implement popular dags here as we`ll -- with filter posts
@@ -79,7 +81,21 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         num_results = request.num_results
 
         return self.recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
+    
+    def get_ml_feed_clean(self, request, context): 
+        watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
+        # successful_plays_uris = [item.video_id for item in request.success_history]
+        successful_plays = [
+        {
+            'video_uri': item.video_id,
+            'item_type': item.item_type,
+            'percent_watched': item.percent_watched
+        } for item in request.success_history
+    ]
+        num_results = request.num_results
 
+        return self.clean_recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
+    
 
 def _wait_forever(server):
     try:
