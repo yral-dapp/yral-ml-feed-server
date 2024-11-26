@@ -164,3 +164,4 @@ poetry.lock
 .DS_Store
 *.ipynb
 
+helper_queries.py

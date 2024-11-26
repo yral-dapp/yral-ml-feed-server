@@ -145,12 +145,20 @@ class CleanRecommendationV0:
         
         video_ids_string = ', '.join(f'"{video_id}"' for video_id in video_ids)
         
-        fetch_post_ids = f"""
-        SELECT
-        video_id, post_id, canister_id
-        FROM `hot-or-not-feed-intelligence.yral_ds.video_metadata`
-        WHERE video_id IN ({video_ids_string})
-        """
+        fetch_post_ids = f"""with uri_mapping as 
+(
+    SELECT distinct
+    uri,
+    SUBSTR(uri, 18, LENGTH(uri) - 21) AS video_id,
+    (SELECT value FROM UNNEST(metadata) WHERE name = 'post_id') AS post_id,
+    (SELECT value FROM UNNEST(metadata) WHERE name = 'timestamp') AS timestamp,
+    (SELECT value FROM UNNEST(metadata) WHERE name = 'canister_id') AS canister_id
+    from 
+    `yral_ds.video_embeddings` 
+)
+select video_id, post_id, canister_id 
+from uri_mapping 
+where video_id in ({video_ids_string})"""
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
@@ -193,13 +201,18 @@ class CleanRecommendationV0:
                 SELECT embedding
                 FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
                 WHERE uri IN ({sample_uris_string})  
+                AND is_nsfw = False AND nsfw_ec = 'neutral'
             ),
             top_k => {search_breadth}
         )
         ORDER BY distance
         ;
         """ # TODO: ReIndexing with NSFW tag
-        result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        try:
+            result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        except Exception as e:
+            _LOGGER.warning(f"Error in vector search query: {e}")
+            return []
         return result_df.to_dict('records')
 
     def get_random_recent_recommendation(self, sample_uris, watch_history_uris, num_results=10):
@@ -274,6 +287,7 @@ class CleanRecommendationV0:
             SELECT embedding
             FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
             WHERE uri IN ({sample_uris_string})
+            AND is_nsfw = False AND nsfw_ec = 'neutral'
             AND post_id is not null
             AND canister_id is not null
             ),
@@ -283,7 +297,11 @@ class CleanRecommendationV0:
         )
         ORDER BY distance 
         """
-        result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        try:
+            result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
+        except Exception as e:
+            _LOGGER.warning(f"Error in vector search query: {e}")
+            return []
         return result_df.to_dict('records')
 
     def get_collated_recommendation(self, successful_plays, watch_history_uris, num_results=10): # TODO: also get the feed type ()
@@ -368,15 +386,15 @@ class CleanRecommendationV0:
         sampled_feed = random.choices(combined_feed, weights=combined_weights, k=num_results)
         
         # for debugging
-        # _LOGGER.warning(f"Length of returned feed: {len(sampled_feed)}")
+        _LOGGER.error(f"Length of returned feed: {len(sampled_feed)}")
         exploitation_count = sum(1 for item in sampled_feed if item in response_exploitation)
         recency_count = sum(1 for item in sampled_feed if item in response_recency)
         exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
         random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
         
-        # _LOGGER.warning(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
+        _LOGGER.error(f"Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
         
-        # _LOGGER.warning(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}")
+        _LOGGER.error(f"Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}") # having logging level at error for quick check. #TODO: remove this 
 
         print(f"""Videos recommended: {len(sampled_feed)}""")
         response = create_feed_response(sampled_feed)
