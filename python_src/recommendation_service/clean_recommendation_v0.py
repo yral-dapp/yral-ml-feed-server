@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _LOGGER.setLevel(logging.INFO)
 
-class SimpleRecommendationV0:
+class CleanRecommendationV0:
     def __init__(self):
         cfg = Config()
         self.bq = BigQueryClient()
@@ -116,15 +116,16 @@ class SimpleRecommendationV0:
         return vdf_sample
 
 
-    def get_popular_videos(self, watch_history_uris, num_results):
+    def get_popular_videos(self, watch_history_uris, num_results): # TODO : add nsfw tag in the global popular videos l7d
         # Construct the SQL query
-        video_ids = [uri.split('/')[-1].split('.')[0] for uri in watch_history_uris] # the script would break if the format is not .mp4
-        watched_video_ids = ', '.join(f"'{video_id}'" for video_id in video_ids)
+        video_ids = [uri.split('/')[-1].split('.')[0] for uri in watch_history_uris] # the script would break if the format is not .mp4 
+        watched_video_ids = ', '.join(f"'{video_id}'" for video_id in video_ids) # will have to check till how much watch history is allowed in bigquery
         if watched_video_ids != "":
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             WHERE video_id NOT IN ({watched_video_ids})
+            AND is_nsfw = False AND nsfw_ec = 'neutral'
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """ # TODO: Add nsfw tag
@@ -132,6 +133,7 @@ class SimpleRecommendationV0:
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            WHERE is_nsfw = False AND nsfw_ec = 'neutral'
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """
@@ -175,13 +177,14 @@ class SimpleRecommendationV0:
         sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
         search_breadth = 2*((int(num_results**0.5)) + 1)
 
-
+        # TODO: ReIndex with nsfw tag
         vs_query = f"""
         SELECT base.uri, base.post_id, base.canister_id, distance FROM
         VECTOR_SEARCH(
             (
                 SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
                 WHERE uri NOT IN ({watch_history_uris_string})
+                AND is_nsfw = False AND nsfw_ec = 'neutral'
                 and post_id is not null 
                 and canister_id is not null 
             ),
@@ -207,6 +210,7 @@ class SimpleRecommendationV0:
             query = f"""
             with recent_uploads as (
             SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            WHERE is_nsfw = False AND nsfw_ec = 'neutral'
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -221,6 +225,7 @@ class SimpleRecommendationV0:
             with recent_uploads as (
             SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
             WHERE uri NOT IN ({watch_history_uris_string})
+            AND is_nsfw = False and nsfw_ec = 'neutral'
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -252,12 +257,14 @@ class SimpleRecommendationV0:
         search_breadth = 2*((int(num_results**0.5)) + 1)
         watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
         sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
+        # Not filtering sample URI for nsfw, but only filtering the result  -- moving forward, we should see less and less nsfw in sample URI and it should eventually diminish. 
         vs_query = f"""
         SELECT base.uri, base.post_id, base.canister_id, base.timestamp, distance FROM
         VECTOR_SEARCH(
             (
             SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
             WHERE uri NOT IN ({watch_history_uris_string})
+            AND is_nsfw = False AND nsfw_ec = 'neutral'
             AND post_id is not null 
             AND canister_id is not null 
             AND TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY)
@@ -267,15 +274,15 @@ class SimpleRecommendationV0:
             SELECT embedding
             FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
             WHERE uri IN ({sample_uris_string})
-            and post_id is not null
-            and canister_id is not null
+            AND post_id is not null
+            AND canister_id is not null
             ),
             top_k => {search_breadth},
             options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
 
         )
         ORDER BY distance 
-        """ # TODO : have nsfw toggle here
+        """
         result_df = self.bq.query(vs_query).drop_duplicates(subset=['uri'])
         return result_df.to_dict('records')
 
@@ -440,12 +447,13 @@ if __name__ == '__main__':
     
     import time
 
-    recommender = SimpleRecommendationV0()
+    recommender = CleanRecommendationV0()
     start_time = time.time()
     feed = recommender.get_collated_recommendation(successful_plays_, outer_watch_history_uris, num_results)
     end_time = time.time()
 
     _LOGGER.info(f"Time required to get the recommendation: {end_time - start_time:.2f} seconds")
+    print(f"Time required to get the recommendation: {end_time - start_time:.2f} seconds")
 
     for item in feed.feed:
         print(item)

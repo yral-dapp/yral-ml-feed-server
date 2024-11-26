@@ -99,7 +99,8 @@ def run(port=50059):
             num_results=25
         )
         try:
-            response = stub.get_ml_feed(request)
+            # response = stub.get_ml_feed(request)
+            response = stub.get_ml_feed_clean(request)
             print("Client received: ", response.feed)
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
