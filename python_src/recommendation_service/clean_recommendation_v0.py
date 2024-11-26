@@ -162,6 +162,7 @@ where video_id in ({video_ids_string})"""
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
+        return [] # muting popoularity for now 
         return mdf['post_id canister_id'.split()].to_dict('records')
     
     def get_score_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
