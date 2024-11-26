@@ -87,6 +87,72 @@ impl MlFeed for MLFeedService {
         Ok(Response::new(FeedResponseV1 { feed: vec![] }))
     }
 
+    async fn get_feed_coldstart(
+        &self,
+        request: Request<FeedRequest>,
+    ) -> Result<Response<FeedResponse>, Status> {
+        let req_obj = request.into_inner();
+        let limit = req_obj.num_results as usize;
+        let canister_id = req_obj.canister_id.clone();
+
+        let mut client = match MlFeedClient::connect(
+            ML_FEED_PY_SERVER, // http://python_proc.process.yral-ml-feed-server.internal:50059"
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                println!("Failed to connect to ml_feed_py server: {:?}", e);
+                return Err(Status::internal("Failed to connect to ml_feed_py server"));
+            }
+        };
+
+        let filter_items = req_obj
+            .filter_posts
+            .iter()
+            .map(|x| ml_feed_py::MlPostItem {
+                canister_id: x.canister_id.clone(),
+                post_id: x.post_id as u32,
+                video_id: format!("gs://yral-videos/{}.mp4", x.video_id.clone()),
+            })
+            .collect::<Vec<ml_feed_py::MlPostItem>>();
+
+        let request = tonic::Request::new(MlFeedRequest {
+            canister_id: req_obj.canister_id,
+            watch_history: vec![],
+            success_history: vec![],
+            filter_posts: filter_items,
+            num_results: req_obj.num_results,
+        });
+
+        let response = client
+            .get_ml_feed(request)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to get ml_feed_py response: {}", e)))?;
+
+        let response_obj = response.into_inner();
+
+        let response_items = response_obj
+            .feed
+            .iter()
+            .map(|x| PostItemResponse {
+                canister_id: x.canister_id.clone(),
+                post_id: x.post_id as u32,
+            })
+            .collect::<Vec<PostItemResponse>>();
+
+        // filter out duplicates
+        let mut seen = HashSet::new();
+        let response_items = response_items
+            .into_iter()
+            .filter(|e| seen.insert((e.canister_id.clone(), e.post_id)))
+            .collect::<Vec<PostItemResponse>>();
+
+        Ok(Response::new(FeedResponse {
+            feed: response_items,
+        }))
+    }
+
     async fn get_feed_clean(
         &self,
         request: Request<FeedRequest>,
