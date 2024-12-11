@@ -12,11 +12,12 @@ use ml_feed_py::ml_feed_client::MlFeedClient;
 use ml_feed_py::{MlFeedRequest, MlFeedResponse};
 use off_chain::off_chain_canister_client::OffChainCanisterClient;
 use prost::bytes::buf::Limit;
+use serde::{Deserialize, Serialize};
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Channel, ClientTlsConfig};
 use tonic::{Request, Response, Status};
 
-use crate::consts::{ML_FEED_PY_SERVER, OFF_CHAIN_AGENT};
+use crate::consts::{CLOUDFLARE_ML_FEED_CACHE_WORKER_URL, ML_FEED_PY_SERVER, OFF_CHAIN_AGENT};
 use crate::utils::{to_rfc3339, to_rfc3339_did_systemtime};
 use crate::{canister, AppState};
 
@@ -324,7 +325,7 @@ pub async fn feed_response_logic(
     let mut response_items1 = response_items.iter().skip(at).cloned().collect::<Vec<_>>();
     tokio::spawn(async move {
         response_items1.reverse();
-        send_to_offchain(canister_id, response_items1).await;
+        send_to_ml_feed_cache(canister_id, response_items1).await;
     });
 
     // take first limit items
@@ -378,6 +379,41 @@ pub async fn send_to_offchain(canister_id_principal_str: String, items: Vec<Post
             e
         ))
     });
+
+    match response {
+        Ok(_) => (),
+        Err(e) => println!("Failed to get update_ml_feed_cache response: {}", e),
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CustomMlFeedCacheItem {
+    post_id: u64,
+    canister_id: String,
+    video_id: String,
+    creator_principal_id: String,
+}
+
+pub async fn send_to_ml_feed_cache(
+    canister_id_principal_str: String,
+    items: Vec<PostItemResponse>,
+) {
+    let cf_worker_url = CLOUDFLARE_ML_FEED_CACHE_WORKER_URL;
+
+    let offchain_items = items
+        .into_iter()
+        .map(|x| CustomMlFeedCacheItem {
+            post_id: x.post_id as u64,
+            canister_id: x.canister_id,
+            video_id: "".to_string(),
+            creator_principal_id: "".to_string(),
+        })
+        .collect::<Vec<CustomMlFeedCacheItem>>();
+
+    // call POST /feed-cache/<CANISTER_ID>
+    let url = format!("{}/feed-cache/{}", cf_worker_url, canister_id_principal_str);
+    let client = reqwest::Client::new();
+    let response = client.post(url).json(&offchain_items).send().await;
 
     match response {
         Ok(_) => (),
