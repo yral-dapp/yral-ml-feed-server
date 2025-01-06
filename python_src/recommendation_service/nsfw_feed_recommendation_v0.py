@@ -15,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _LOGGER.setLevel(logging.INFO)
 
-class CleanRecommendationV0:
+class NsfwRecommendationV0:
     def __init__(self):
         cfg = Config()
         self.bq = BigQueryClient()
@@ -125,7 +125,7 @@ class CleanRecommendationV0:
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
             WHERE video_id NOT IN ({watched_video_ids})
-            AND is_nsfw = False AND nsfw_ec = 'neutral'
+            AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """ # TODO: Add nsfw tag
@@ -133,7 +133,7 @@ class CleanRecommendationV0:
             query = f"""
             SELECT video_id, global_popularity_score
             FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
-            WHERE is_nsfw = False AND nsfw_ec = 'neutral'
+            WHERE (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """
@@ -162,7 +162,6 @@ where video_id in ({video_ids_string})"""
 
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
-        return [] # muting popoularity for now 
         return mdf['post_id canister_id'.split()].to_dict('records')
     
     def get_score_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
@@ -193,7 +192,7 @@ where video_id in ({video_ids_string})"""
             (
                 SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
                 WHERE uri NOT IN ({watch_history_uris_string})
-                AND is_nsfw = False AND nsfw_ec = 'neutral'
+                AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
                 and post_id is not null 
                 and canister_id is not null 
             ),
@@ -202,7 +201,7 @@ where video_id in ({video_ids_string})"""
                 SELECT embedding
                 FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
                 WHERE uri IN ({sample_uris_string})  
-                AND is_nsfw = False AND nsfw_ec = 'neutral'
+                AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ),
             top_k => {search_breadth}
         )
@@ -224,7 +223,7 @@ where video_id in ({video_ids_string})"""
             query = f"""
             with recent_uploads as (
             SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
-            WHERE is_nsfw = False AND nsfw_ec = 'neutral'
+            WHERE (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -239,7 +238,7 @@ where video_id in ({video_ids_string})"""
             with recent_uploads as (
             SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
             WHERE uri NOT IN ({watch_history_uris_string})
-            AND is_nsfw = False and nsfw_ec = 'neutral'
+            AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -249,7 +248,8 @@ where video_id in ({video_ids_string})"""
             """ # Use nsfw tag in this index
 
         result_df = self.bq.query(query).drop_duplicates(subset=['uri'])
-        return result_df.to_dict('records')
+        return [] # muting
+        # return result_df.to_dict('records')
 
 
     def get_recency_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
@@ -268,6 +268,7 @@ where video_id in ({video_ids_string})"""
         """
         if not len(sample_uris):
             return []
+        return [] # muting
         search_breadth = 2*((int(num_results**0.5)) + 1)
         watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
         sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
@@ -278,7 +279,7 @@ where video_id in ({video_ids_string})"""
             (
             SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
             WHERE uri NOT IN ({watch_history_uris_string})
-            AND is_nsfw = False AND nsfw_ec = 'neutral'
+            AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             AND post_id is not null 
             AND canister_id is not null 
             AND TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY)
@@ -288,7 +289,7 @@ where video_id in ({video_ids_string})"""
             SELECT embedding
             FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
             WHERE uri IN ({sample_uris_string})
-            AND is_nsfw = False AND nsfw_ec = 'neutral'
+            AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             AND post_id is not null
             AND canister_id is not null
             ),
@@ -357,13 +358,13 @@ where video_id in ({video_ids_string})"""
             if len_required == 0:
                 return 0
             ratio = len_sample / len_required
-            score = max(0, min(90, ratio * 90))
+            score = max(0, min(70, ratio * 70))
             return score
 
         exploit_score = calculate_exploit_score(current_sample_size, required_sample_size)
         exploration_score = 100 - exploit_score
 
-        exploitation_score, recency_exploitation_score, exploration_score, random_recent_score = exploit_score/2, exploit_score/2, exploration_score*(3/4), exploration_score*(1/4)
+        exploitation_score, recency_exploitation_score, exploration_score, random_recent_score = exploit_score/2, exploit_score/2, exploration_score*(7/8), exploration_score*(1/8)
         
         combined_feed = response_exploitation + response_recency + response_exploration + response_random_recent
         combined_weights = ([exploitation_score] * len(response_exploitation) + 
@@ -393,11 +394,11 @@ where video_id in ({video_ids_string})"""
         exploration_count = sum(1 for item in sampled_feed if item in response_exploration)
         random_recent_count = sum(1 for item in sampled_feed if item in response_random_recent)
         
-        _LOGGER.error(f"Clean feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
+        _LOGGER.error(f"NSFW feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}")
         
-        _LOGGER.error(f"Clean feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}") # having logging level at error for quick check. #TODO: remove this 
+        _LOGGER.error(f"NSFW feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}") # having logging level at error for quick check. #TODO: remove this 
 
-        _LOGGER.error(f"""Clean feed || Videos recommended: {len(sampled_feed)}""")
+        _LOGGER.error(f"""NSFW feed || Videos recommended: {len(sampled_feed)}""")
         response = create_feed_response(sampled_feed)
         return response
 
@@ -475,5 +476,5 @@ if __name__ == '__main__':
     print(f"Time required to get the recommendation: {end_time - start_time:.2f} seconds")
 
     for item in feed.feed:
-        print(item)
+        print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
 

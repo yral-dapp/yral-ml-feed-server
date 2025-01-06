@@ -71,7 +71,7 @@ successful_plays = ["gs://yral-videos/bb13dbff7ee3494bae5bcb7e9309c5fe.mp4"]*5
 filter_responses = [(1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")]
 
 # videos_watched = successful_plays = filter_responses = []
-# videos_watched = successful_plays = filter_responses = []
+videos_watched = successful_plays = filter_responses = []
 
 def run(port=50059):
     # Assuming the server is running on localhost and port 50059
@@ -100,8 +100,10 @@ def run(port=50059):
         )
         try:
             # response = stub.get_ml_feed(request)
-            response = stub.get_ml_feed_clean(request)
-            print("Client received: ", response.feed)
+            response = stub.get_ml_feed_nsfw(request)
+            # print("Client received: ", response.feed)
+            for item in response.feed:
+                print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
 

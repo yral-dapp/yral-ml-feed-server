@@ -43,4 +43,5 @@ message MLFeedResponse { repeated MLPostItemResponse feed = 1; }
 service MLFeed {
   rpc get_ml_feed(MLFeedRequest) returns (MLFeedResponse) {}
   rpc get_ml_feed_clean(MLFeedRequest) returns (MLFeedResponse) {}
-}
+  rpc get_ml_feed_nsfw(MLFeedRequest) returns (MLFeedResponse) {}
+} 
