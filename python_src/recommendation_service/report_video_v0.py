@@ -50,7 +50,7 @@ class ReportVideoV0:
                 top_k => 1000,
                 options => '{{"fraction_lists_to_search":0.6}}' 
             ) 
-            WHERE distance < 0.1
+            WHERE distance < 0.16
         )
         GROUP BY canister_id, post_id, uri
         """
