@@ -5,7 +5,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use candid::Principal;
 use ic_agent::Agent;
-use ml_feed::{FeedRequest, FeedResponse, FeedResponseV1, PostItem, PostItemResponse};
+use ml_feed::{
+    FeedRequest, FeedResponse, FeedResponseV1, PostItem, PostItemResponse, VideoReportRequest,
+    VideoReportResponse,
+};
 
 use ml_feed::ml_feed_server::MlFeed;
 use ml_feed_py::ml_feed_client::MlFeedClient;
@@ -230,6 +233,41 @@ impl MlFeed for MLFeedService {
         let response_obj = response.into_inner();
 
         feed_response_logic_nsfw(response_obj, canister_id, limit).await
+    }
+
+    async fn report_video(
+        &self,
+        request: Request<VideoReportRequest>,
+    ) -> Result<Response<VideoReportResponse>, Status> {
+        let req_obj = request.into_inner();
+
+        let mut client = match MlFeedClient::connect(
+            ML_FEED_PY_SERVER, // http://python_proc.process.yral-ml-feed-server.internal:50059"
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                println!("Failed to connect to ml_feed_py server: {:?}", e);
+                return Err(Status::internal("Failed to connect to ml_feed_py server"));
+            }
+        };
+
+        let request = tonic::Request::new(ml_feed_py::VideoReportRequest {
+            reportee_user_id: req_obj.reportee_user_id,
+            reportee_canister_id: req_obj.reportee_canister_id,
+            video_canister_id: req_obj.video_canister_id,
+            video_post_id: req_obj.video_post_id,
+            video_id: req_obj.video_id,
+            reason: req_obj.reason,
+        });
+
+        let _response = client
+            .report_video(request)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to get ml_feed_py response: {}", e)))?;
+
+        Ok(Response::new(VideoReportResponse { success: true }))
     }
 }
 
