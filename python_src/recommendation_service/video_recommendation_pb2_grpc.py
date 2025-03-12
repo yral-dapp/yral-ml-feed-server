@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from python_src.recommendation_service import video_recommendation_pb2 as python__src_dot_recommendation__service_dot_video__recommendation__pb2
+from recommendation_service import video_recommendation_pb2 as recommendation__service_dot_video__recommendation__pb2
 
 GRPC_GENERATED_VERSION = '1.68.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in python_src/recommendation_service/video_recommendation_pb2_grpc.py depends on'
+        + f' but the generated code in recommendation_service/video_recommendation_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,23 +36,23 @@ class MLFeedStub(object):
         """
         self.get_ml_feed = channel.unary_unary(
                 '/ml_feed_py.MLFeed/get_ml_feed',
-                request_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-                response_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
                 _registered_method=True)
         self.get_ml_feed_clean = channel.unary_unary(
                 '/ml_feed_py.MLFeed/get_ml_feed_clean',
-                request_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-                response_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
                 _registered_method=True)
         self.get_ml_feed_nsfw = channel.unary_unary(
                 '/ml_feed_py.MLFeed/get_ml_feed_nsfw',
-                request_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-                response_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
                 _registered_method=True)
         self.report_video = channel.unary_unary(
                 '/ml_feed_py.MLFeed/report_video',
-                request_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
-                response_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
                 _registered_method=True)
 
 
@@ -88,23 +88,23 @@ def add_MLFeedServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'get_ml_feed': grpc.unary_unary_rpc_method_handler(
                     servicer.get_ml_feed,
-                    request_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
-                    response_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
             ),
             'get_ml_feed_clean': grpc.unary_unary_rpc_method_handler(
                     servicer.get_ml_feed_clean,
-                    request_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
-                    response_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
             ),
             'get_ml_feed_nsfw': grpc.unary_unary_rpc_method_handler(
                     servicer.get_ml_feed_nsfw,
-                    request_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
-                    response_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.SerializeToString,
             ),
             'report_video': grpc.unary_unary_rpc_method_handler(
                     servicer.report_video,
-                    request_deserializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.FromString,
-                    response_serializer=python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.SerializeToString,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -132,8 +132,8 @@ class MLFeed(object):
             request,
             target,
             '/ml_feed_py.MLFeed/get_ml_feed',
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -159,8 +159,8 @@ class MLFeed(object):
             request,
             target,
             '/ml_feed_py.MLFeed/get_ml_feed_clean',
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -186,8 +186,8 @@ class MLFeed(object):
             request,
             target,
             '/ml_feed_py.MLFeed/get_ml_feed_nsfw',
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -213,8 +213,8 @@ class MLFeed(object):
             request,
             target,
             '/ml_feed_py.MLFeed/report_video',
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
-            python__src_dot_recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
+            recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
             options,
             channel_credentials,
             insecure,
