@@ -1,6 +1,5 @@
 import os
 
-
 class Config:
     def __init__(self):
         self.config_data = self.load_config()
@@ -11,7 +10,8 @@ class Config:
             'upstash_token': os.getenv('UPSTASH_TOKEN'),
             'project': os.getenv('PROJECT'),
             'service_cred': os.getenv('SERVICE_CRED'),
-            'video_bucket_name': os.getenv('GS_VIDEO_BUCKET')
+            'video_bucket_name': os.getenv('GS_VIDEO_BUCKET'),
+            'logging': True
         }
 
     def get(self, key, default=None):

@@ -10,6 +10,12 @@ import grpc
 import video_recommendation_pb2
 import video_recommendation_pb2_grpc
 import random
+from recommendation_service.consts import (
+    VIDEO_EMBEDDINGS_TABLE,
+    GLOBAL_POPULAR_VIDEOS_TABLE,
+    VIDEO_METADATA_TABLE,
+    VIDEO_INDEX_TABLE
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +42,7 @@ class SimpleRecommendationV0:
         """
         query = f"""
         SELECT uri, post_id, canister_id, timestamp, embedding
-        FROM `yral_ds.video_embeddings`
+        FROM {VIDEO_EMBEDDINGS_TABLE}
         WHERE uri IN UNNEST({uri_list})
         """
         return self.bq.query(query)
@@ -123,7 +129,7 @@ class SimpleRecommendationV0:
         if watched_video_ids != "":
             query = f"""
             SELECT video_id, global_popularity_score
-            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            FROM {GLOBAL_POPULAR_VIDEOS_TABLE}
             WHERE video_id NOT IN ({watched_video_ids})
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -131,7 +137,7 @@ class SimpleRecommendationV0:
         else:
             query = f"""
             SELECT video_id, global_popularity_score
-            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            FROM {GLOBAL_POPULAR_VIDEOS_TABLE}
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """
@@ -146,7 +152,7 @@ class SimpleRecommendationV0:
         fetch_post_ids = f"""
         SELECT
         video_id, post_id, canister_id
-        FROM `hot-or-not-feed-intelligence.yral_ds.video_metadata`
+        FROM {VIDEO_METADATA_TABLE}
         WHERE video_id IN ({video_ids_string})
         """
 
@@ -180,7 +186,7 @@ class SimpleRecommendationV0:
         SELECT base.uri, base.post_id, base.canister_id, distance FROM
         VECTOR_SEARCH(
             (
-                SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+                SELECT * FROM {VIDEO_INDEX_TABLE}
                 WHERE uri NOT IN ({watch_history_uris_string})
                 and post_id is not null 
                 and canister_id is not null 
@@ -188,7 +194,7 @@ class SimpleRecommendationV0:
             'embedding',
             (
                 SELECT embedding
-                FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+                FROM {VIDEO_INDEX_TABLE}
                 WHERE uri IN ({sample_uris_string})  
             ),
             top_k => {search_breadth}
@@ -206,7 +212,7 @@ class SimpleRecommendationV0:
         if not len(watch_history_uris):
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -219,7 +225,7 @@ class SimpleRecommendationV0:
             watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
             WHERE uri NOT IN ({watch_history_uris_string})
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -256,7 +262,7 @@ class SimpleRecommendationV0:
         SELECT base.uri, base.post_id, base.canister_id, base.timestamp, distance FROM
         VECTOR_SEARCH(
             (
-            SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+            SELECT * FROM {VIDEO_INDEX_TABLE}
             WHERE uri NOT IN ({watch_history_uris_string})
             AND post_id is not null 
             AND canister_id is not null 
@@ -265,7 +271,7 @@ class SimpleRecommendationV0:
             'embedding',
             (
             SELECT embedding
-            FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            FROM {VIDEO_INDEX_TABLE}
             WHERE uri IN ({sample_uris_string})
             and post_id is not null
             and canister_id is not null

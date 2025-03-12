@@ -1,3 +1,4 @@
+import os
 from concurrent import futures
 import contextlib
 import datetime
@@ -7,7 +8,6 @@ import random
 import socket
 import sys
 import time
-import os
 from typing import Any
 import jwt
 # import consts
@@ -25,6 +25,7 @@ _LOGGER = logging.getLogger(__name__)
 
 _ONE_DAY = datetime.timedelta(days=1)
 _PROCESS_COUNT = multiprocessing.cpu_count()
+# _PROCESS_COUNT = 1 # TODO: stage change book mark
 _THREAD_CONCURRENCY = 10 # heuristic
 _BIND_ADDRESS = "[::]:50059"  # Fixed bind address
 
@@ -68,10 +69,8 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         self.nsfw_recommender = NsfwRecommendationV0()
         return
 
-    # implement popular dags here as we`ll -- with filter posts
     def get_ml_feed(self, request, context):
         watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
-        # successful_plays_uris = [item.video_id for item in request.success_history]
         successful_plays = [
         {
             'video_uri': item.video_id,
@@ -99,7 +98,6 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
     
     def get_ml_feed_nsfw(self, request, context):
         watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
-        # successful_plays_uris = [item.video_id for item in request.success_history]
         successful_plays = [
         {
             'video_uri': item.video_id,

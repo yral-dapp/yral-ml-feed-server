@@ -166,3 +166,7 @@ poetry.lock
 
 helper_queries.py
 init.txt
+.env
+python_src/.env
+*.csv
+test.py
