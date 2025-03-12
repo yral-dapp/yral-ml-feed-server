@@ -170,3 +170,4 @@ init.txt
 python_src/.env
 *.csv
 test.py
+todo.txt

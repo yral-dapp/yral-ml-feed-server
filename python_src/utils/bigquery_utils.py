@@ -45,7 +45,3 @@ WHERE
              """)
     
     res_df.to_csv('bq_res.csv')
-##
-import pandas as pd
-df = pd.read_csv('bq_res.csv', nrows=10)
-## 

@@ -13,6 +13,7 @@ if not use_stage:
     GLOBAL_POPULAR_VIDEOS_TABLE = f"`{PROJECT_ID}.{DATASET}.global_popular_videos_l7d`"
     VIDEO_METADATA_TABLE = f"`{PROJECT_ID}.{DATASET}.video_metadata`"
     VIDEO_INDEX_TABLE = f"`{PROJECT_ID}.{DATASET}.video_index`"
+    REPORT_VIDEO_TABLE = f"`{PROJECT_ID}.{DATASET}.ml_feed_reports`"
 # VIDEO_NSFW_TABLE = f"`{DATASET}.video_nsfw`" 
 
 else: 

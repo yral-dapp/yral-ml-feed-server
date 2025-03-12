@@ -21,11 +21,12 @@ from utils.upstash_utils import UpstashUtils
 from simple_recommendation_v0 import SimpleRecommendationV0
 from clean_recommendation_v0 import CleanRecommendationV0
 from nsfw_feed_recommendation_v0 import NsfwRecommendationV0
+from report_video_v0 import ReportVideoV0
 _LOGGER = logging.getLogger(__name__)
 
 _ONE_DAY = datetime.timedelta(days=1)
-_PROCESS_COUNT = multiprocessing.cpu_count()
-# _PROCESS_COUNT = 1 # TODO: stage change book mark
+# _PROCESS_COUNT = multiprocessing.cpu_count()
+_PROCESS_COUNT = 1 # TODO: stage change book mark
 _THREAD_CONCURRENCY = 10 # heuristic
 _BIND_ADDRESS = "[::]:50059"  # Fixed bind address
 
@@ -67,6 +68,7 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         self.recommender = SimpleRecommendationV0()
         self.clean_recommender = CleanRecommendationV0()
         self.nsfw_recommender = NsfwRecommendationV0()
+        self.report_handler = ReportVideoV0()
         return
 
     def get_ml_feed(self, request, context):
@@ -108,7 +110,34 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         num_results = request.num_results
 
         return self.nsfw_recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
+
+    def report_video(self, request, context):
+        reportee_user_id = request.reportee_user_id
+        reportee_canister_id = request.reportee_canister_id
+        video_canister_id = request.video_canister_id
+        video_post_id = request.video_post_id
+        video_id = request.video_id
+        reason = request.reason
+
+        print(f"Reporting video {video_id} from {video_canister_id} with post id {video_post_id} by {reportee_user_id}")
+        
+        # Use the report_video_v0 method to handle the report
+        success = self.report_handler.report_video_v0(
+            reportee_user_id=reportee_user_id,
+            reportee_canister_id=reportee_canister_id,
+            video_canister_id=video_canister_id,
+            video_post_id=video_post_id,
+            video_id=video_id,
+            reason=reason
+        )
+        
+        return video_recommendation_pb2.VideoReportResponse(success=success)
+        
+
+        
+
     
+
 
 def _wait_forever(server):
     try:
