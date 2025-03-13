@@ -188,7 +188,7 @@ impl MlFeed for MLFeedService {
         // println!("request: {:?}", request);
 
         let response = client
-            .get_ml_feed_clean(request)
+            .get_ml_feed_clean_v1(request)
             .await
             .map_err(|e| Status::internal(format!("Failed to get ml_feed_py response: {}", e)))?;
 
@@ -226,7 +226,7 @@ impl MlFeed for MLFeedService {
         };
 
         let response = client
-            .get_ml_feed_nsfw(request)
+            .get_ml_feed_nsfw_v1(request)
             .await
             .map_err(|e| Status::internal(format!("Failed to get ml_feed_py response: {}", e)))?;
 
