@@ -24,18 +24,20 @@ TABLE_COLUMNS_TO_CHECK = [
     "parent_video_uri",
     "reason",
     "report_timestamp",
-    "report_type"
+    "report_type",
 ]
+
 
 # Function to create a batch of row data to be serialized.
 def create_row_data(data):
     row = ml_feed_reports_pb2.MLFeedReport()
     for field in TABLE_COLUMNS_TO_CHECK:
-      if field in data:
-        setattr(row, field, data[field])
+        if field in data:
+            setattr(row, field, data[field])
     return row.SerializeToString()
 
-class BigQueryStorageWriteAppend():
+
+class BigQueryStorageWriteAppend:
 
     def __init__(self, project_id, dataset_id, table_id, stream_name="_default"):
         self.project_id = project_id
@@ -45,24 +47,27 @@ class BigQueryStorageWriteAppend():
         # Initialize config for service credentials
         self.cfg = Config()
 
-
-    def append_rows_proto2(
-        self, data: dict
-    ):
+    def append_rows_proto2(self, data: dict):
         write_client = None
         append_rows_stream = None
         try:
             # Get service credentials from Config
-            service_cred = self.cfg.get('service_cred')
+            service_cred = self.cfg.get("service_cred")
             service_acc_creds = json.loads(service_cred)
-            credentials = service_account.Credentials.from_service_account_info(service_acc_creds)
-            
+            credentials = service_account.Credentials.from_service_account_info(
+                service_acc_creds
+            )
+
             # Create client with credentials
-            write_client = bigquery_storage_v1.BigQueryWriteClient(credentials=credentials)
-            parent = write_client.table_path(self.project_id, self.dataset_id, self.table_id)
-            stream_name = f'{parent}/{self.stream_name}'
-            print("stream_name",stream_name)
-            
+            write_client = bigquery_storage_v1.BigQueryWriteClient(
+                credentials=credentials
+            )
+            parent = write_client.table_path(
+                self.project_id, self.dataset_id, self.table_id
+            )
+            stream_name = f"{parent}/{self.stream_name}"
+            print("stream_name", stream_name)
+
             # Log data for debugging
             for i, row in enumerate(data):
                 logging.debug(f"Row {i} data: {row}")
@@ -70,7 +75,7 @@ class BigQueryStorageWriteAppend():
                 for field in TABLE_COLUMNS_TO_CHECK:
                     if field not in row:
                         logging.error(f"Missing required field {field} in row {i}")
-            
+
             write_stream = types.WriteStream()
 
             # Create a template with fields needed for the first request.
@@ -109,7 +114,7 @@ class BigQueryStorageWriteAppend():
 
             # Send the request and get the response
             response_future = append_rows_stream.send(request)
-            
+
             # Wait for the response to complete before closing the stream
             response = response_future.result()
 
@@ -120,41 +125,43 @@ class BigQueryStorageWriteAppend():
             #     append_rows_stream.close()
             # Note: Don't close the client here as it might be reused
             pass
-            
+
         return True
+
 
 if __name__ == "__main__":
 
     ##### Uncomment the below block to provide additional logging capabilities ######
     logging.basicConfig(
-       level=logging.DEBUG,
-       format="%(asctime)s [%(levelname)s] %(message)s",
-       handlers=[
-           logging.StreamHandler()
-       ]
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[logging.StreamHandler()],
     )
     ##### Uncomment the above block to provide additional logging capabilities ######
 
     # Load data once outside the loop
-    data = [{
-        "reportee_user_id": "reportee_user_id",
-        "reportee_canister_id": "reportee_canister_id",
-        "video_canister_id": "video_canister_id",
-        "video_post_id": "123",
-        "video_uri": "video_uri",
-        "parent_video_canister_id": "parent_video_canister_id",
-        "parent_video_post_id": "parent_video_post_id",
-        "parent_video_uri": "parent_video_uri",
-        "report_timestamp": str(datetime.now()),
-        "report_type": "report_type",
-        "reason": "reason"
-    }]*3
-    
+    data = [
+        {
+            "reportee_user_id": "reportee_user_id",
+            "reportee_canister_id": "reportee_canister_id",
+            "video_canister_id": "video_canister_id",
+            "video_post_id": "123",
+            "video_uri": "video_uri",
+            "parent_video_canister_id": "parent_video_canister_id",
+            "parent_video_post_id": "parent_video_post_id",
+            "parent_video_uri": "parent_video_uri",
+            "report_timestamp": str(datetime.now()),
+            "report_type": "report_type",
+            "reason": "reason",
+        }
+    ] * 3
+
     # Change this to your specific BigQuery project, dataset, table details
     project_id = consts.PROJECT_ID
     dataset_id = consts.DATASET
-    table_id = consts.REPORT_VIDEO_TABLE.split('.')[-1].replace('`', '')
+    table_id = consts.REPORT_VIDEO_TABLE.split(".")[-1].replace("`", "")
 
-    bigquery_storage_writer = BigQueryStorageWriteAppend(project_id, dataset_id, table_id)
+    bigquery_storage_writer = BigQueryStorageWriteAppend(
+        project_id, dataset_id, table_id
+    )
     bigquery_storage_writer.append_rows_proto2(data)
-

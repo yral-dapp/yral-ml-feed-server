@@ -10,6 +10,7 @@ import sys
 import time
 from typing import Any
 import jwt
+
 # import consts
 
 import grpc
@@ -21,13 +22,18 @@ from utils.upstash_utils import UpstashUtils
 from simple_recommendation_v0 import SimpleRecommendationV0
 from clean_recommendation_v0 import CleanRecommendationV0
 from nsfw_feed_recommendation_v0 import NsfwRecommendationV0
+from clean_recommendation_report_filtered_v0 import CleanRecommendationReportFilteredV0
+from nsfw_feed_recommendation_report_filtered_v0 import (
+    NsfwRecommendationReportFilteredV0,
+)
 from report_video_v0 import ReportVideoV0
+
 _LOGGER = logging.getLogger(__name__)
 
 _ONE_DAY = datetime.timedelta(days=1)
-# _PROCESS_COUNT = multiprocessing.cpu_count()
-_PROCESS_COUNT = 1 # TODO: stage change book mark
-_THREAD_CONCURRENCY = 10 # heuristic
+_PROCESS_COUNT = multiprocessing.cpu_count()
+# _PROCESS_COUNT = 1  # TODO: stage change book mark
+_THREAD_CONCURRENCY = 10  # heuristic
 _BIND_ADDRESS = "[::]:50059"  # Fixed bind address
 
 
@@ -68,48 +74,117 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         self.recommender = SimpleRecommendationV0()
         self.clean_recommender = CleanRecommendationV0()
         self.nsfw_recommender = NsfwRecommendationV0()
+        self.clean_recommender_report_filtered_v0 = (
+            CleanRecommendationReportFilteredV0()
+        )
+        self.nsfw_recommender_report_filtered_v0 = NsfwRecommendationReportFilteredV0()
         self.report_handler = ReportVideoV0()
         return
 
     def get_ml_feed(self, request, context):
-        watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
         successful_plays = [
-        {
-            'video_uri': item.video_id,
-            'item_type': item.item_type,
-            'percent_watched': item.percent_watched
-        } for item in request.success_history
-    ]
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
         num_results = request.num_results
 
-        return self.recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
-    
-    def get_ml_feed_clean(self, request, context): 
-        watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
+        return self.recommender.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+        )
+
+    def get_ml_feed_clean(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
         # successful_plays_uris = [item.video_id for item in request.success_history]
         successful_plays = [
-        {
-            'video_uri': item.video_id,
-            'item_type': item.item_type,
-            'percent_watched': item.percent_watched
-        } for item in request.success_history
-    ]
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
         num_results = request.num_results
 
-        return self.clean_recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
-    
+        return self.clean_recommender.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+        )
+
     def get_ml_feed_nsfw(self, request, context):
-        watch_history_uris = [item.video_id for item in request.watch_history] + [item.video_id for item in request.filter_posts]
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
         successful_plays = [
-        {
-            'video_uri': item.video_id,
-            'item_type': item.item_type,
-            'percent_watched': item.percent_watched
-        } for item in request.success_history
-    ]
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
         num_results = request.num_results
 
-        return self.nsfw_recommender.get_collated_recommendation(successful_plays=successful_plays, watch_history_uris=watch_history_uris, num_results=num_results)
+        return self.nsfw_recommender.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+        )
+
+    def get_ml_feed_clean_v0(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.clean_recommender_report_filtered_v0.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_nsfw_v0(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.nsfw_recommender_report_filtered_v0.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
 
     def report_video(self, request, context):
         reportee_user_id = request.reportee_user_id
@@ -119,8 +194,10 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         video_id = request.video_id
         reason = request.reason
 
-        print(f"Reporting video {video_id} from {video_canister_id} with post id {video_post_id} by {reportee_user_id}")
-        
+        print(
+            f"Reporting video {video_id} from {video_canister_id} with post id {video_post_id} by {reportee_user_id}"
+        )
+
         # Use the report_video_v0 method to handle the report
         success = self.report_handler.report_video_v0(
             reportee_user_id=reportee_user_id,
@@ -128,15 +205,10 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
             video_canister_id=video_canister_id,
             video_post_id=video_post_id,
             video_id=video_id,
-            reason=reason
+            reason=reason,
         )
-        
+
         return video_recommendation_pb2.VideoReportResponse(success=success)
-        
-
-        
-
-    
 
 
 def _wait_forever(server):
@@ -146,8 +218,10 @@ def _wait_forever(server):
     except KeyboardInterrupt:
         print("Killing the server")
         server.stop(None)
-        import os # for testing env
+        import os  # for testing env
+
         os.system("lsof -ti :50059 | xargs kill -9")
+
 
 def _run_server():
     _LOGGER.info("Starting new server.")
@@ -158,11 +232,9 @@ def _run_server():
         # interceptors=(SignatureValidationInterceptor(),),
         options=options,
     )
-    video_recommendation_pb2_grpc.add_MLFeedServicer_to_server(
-        MLFeedServicer(), server
-    )
+    video_recommendation_pb2_grpc.add_MLFeedServicer_to_server(MLFeedServicer(), server)
     SERVICE_NAMES = (
-        video_recommendation_pb2.DESCRIPTOR.services_by_name['MLFeed'].full_name,
+        video_recommendation_pb2.DESCRIPTOR.services_by_name["MLFeed"].full_name,
         reflection.SERVICE_NAME,
     )
     reflection.enable_server_reflection(SERVICE_NAMES, server)
@@ -171,12 +243,12 @@ def _run_server():
     _LOGGER.info(f"Server started on {_BIND_ADDRESS}")
     _wait_forever(server)
 
+
 def main():
     multiprocessing.set_start_method("spawn", force=True)
     _LOGGER.info(f"Binding to '{_BIND_ADDRESS}'")
     sys.stdout.flush()
-    
-    
+
     workers = []
     for _ in range(_PROCESS_COUNT):
         worker = multiprocessing.Process(target=_run_server)
@@ -184,6 +256,7 @@ def main():
         workers.append(worker)
     for worker in workers:
         worker.join()
+
 
 if __name__ == "__main__":
     handler = logging.StreamHandler(sys.stdout)
