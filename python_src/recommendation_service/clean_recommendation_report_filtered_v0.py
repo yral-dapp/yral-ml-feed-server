@@ -82,6 +82,9 @@ class CleanRecommendationReportFilteredV0:
 
         return vdf_sample
 
+##
+# Popularity
+## 
     def get_popular_videos(
         self, watch_history_uris, num_results, user_canister_id
     ):  # TODO : add nsfw tag in the global popular videos l7d
@@ -213,6 +216,10 @@ where video_id in ({video_ids_string})"""
             return []
         return result_df.to_dict("records")
 
+##
+# Recency based exploration
+## 
+
     def get_random_recent_recommendation(
         self, sample_uris, watch_history_uris, num_results=10, user_canister_id=None
     ):
@@ -234,7 +241,7 @@ where video_id in ({video_ids_string})"""
             SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE} search_result
             LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
             ON search_result.uri = video_nsfw_agg.gcs_video_id
-            WHERE is_nsfw = False AND nsfw_ec = 'neutral'
+            WHERE search_result.is_nsfw = False AND search_result.nsfw_ec = 'neutral'
             AND video_nsfw_agg.probability < 0.4
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
@@ -256,8 +263,8 @@ where video_id in ({video_ids_string})"""
             SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE} search_result
             LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
             ON search_result.uri = video_nsfw_agg.gcs_video_id
-            WHERE uri NOT IN ({watch_history_uris_string})
-            AND is_nsfw = False and nsfw_ec = 'neutral'
+            WHERE search_result.uri NOT IN ({watch_history_uris_string})
+            AND search_result.is_nsfw = False and search_result.nsfw_ec = 'neutral'
             AND video_nsfw_agg.probability < 0.4
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
@@ -274,6 +281,10 @@ where video_id in ({video_ids_string})"""
 
         result_df = self.bq.query(query).drop_duplicates(subset=["uri"])
         return result_df.to_dict("records")
+
+##
+# Recency based exploitation
+## 
 
     def get_recency_aware_recommendation(
         self, sample_uris, watch_history_uris, num_results=10, user_canister_id="test_canister"
@@ -401,8 +412,6 @@ where video_id in ({video_ids_string})"""
         random_recent_recommendation = future_random_recent.result()
 
         if self.logging :
-            print("+++++++++++++=")
-
             url_template = "https://yral.com/hot-or-not/{canister_id}/{post_id}"
             similar_videos = [url_template.format(canister_id=item["canister_id"], post_id=item["post_id"]) for item in exploit_recommendation]
             print(f"Similar videos: {"\n".join(similar_videos)}")
@@ -462,8 +471,8 @@ where video_id in ({video_ids_string})"""
         ) = (
             exploit_score / 2,
             exploit_score / 2,
-            exploration_score * (3 / 4),
-            exploration_score * (1 / 4),
+            exploration_score * (2 / 4),
+            exploration_score * (2 / 4),
         )
 
         combined_feed = (
