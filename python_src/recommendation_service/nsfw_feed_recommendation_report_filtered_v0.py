@@ -1,6 +1,5 @@
 from config import Config
 
-# from utils.upstash_utils import UpstashUtils
 from concurrent.futures import ThreadPoolExecutor
 from utils.bigquery_utils import BigQueryClient
 from ast import literal_eval
@@ -16,6 +15,7 @@ from recommendation_service.consts import (
     GLOBAL_POPULAR_VIDEOS_TABLE,
     VIDEO_INDEX_TABLE,
     REPORT_VIDEO_TABLE,
+    VIDEO_NSFW_TABLE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ class NsfwRecommendationReportFilteredV0:
         ### hyper-parameters
         self.sample_size = 5  # number of successful plays to sample
         self.video_bucket_name = cfg.get("video_bucket_name")
+        self.logging = cfg.get("logging", False)
 
     def fetch_embeddings(self, uri_list):
         """
@@ -81,10 +82,16 @@ class NsfwRecommendationReportFilteredV0:
 
         return vdf_sample
 
+##
+# Popularity
+## 
     def get_popular_videos(
         self, watch_history_uris, num_results, user_canister_id
     ):  # TODO : add nsfw tag in the global popular videos l7d
         # Construct the SQL query
+        """
+        Get popular videos
+        """
         video_ids = [
             uri.split("/")[-1].split(".")[0] for uri in watch_history_uris
         ]  # the script would break if the format is not .mp4
@@ -108,7 +115,7 @@ class NsfwRecommendationReportFilteredV0:
             AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
-            """  # TODO: Add nsfw tag
+            """
         else:
             query = f"""
             SELECT video_id, global_popularity_score
@@ -119,6 +126,7 @@ class NsfwRecommendationReportFilteredV0:
                 WHERE SUBSTR(video_uri, 18, ABS(LENGTH(video_uri) - 21)) = video_id
                 AND reportee_canister_id = '{user_canister_id}'
             )
+            AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
             """
@@ -150,6 +158,10 @@ where video_id in ({video_ids_string})"""
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
         return mdf["post_id canister_id".split()].to_dict("records")
 
+##
+# Exploitation
+## 
+
     def get_score_aware_recommendation(
         self, sample_uris, watch_history_uris, num_results=10, user_canister_id=None
     ):
@@ -174,6 +186,7 @@ where video_id in ({video_ids_string})"""
         search_breadth = 2 * ((int(num_results**0.5)) + 1)
 
         vs_query = f"""
+        with search_result as (
         SELECT base.uri, base.post_id, base.canister_id, distance FROM
         VECTOR_SEARCH(
             (
@@ -195,17 +208,31 @@ where video_id in ({video_ids_string})"""
                 WHERE uri IN ({sample_uris_string})  
                 AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ),
-            top_k => {search_breadth}
+            top_k => 1000,
+            options => '{{"fraction_lists_to_search":0.6}}'
+            
         )
+        )
+        SELECT search_result.uri, search_result.post_id, search_result.canister_id, search_result.distance
+        FROM search_result
+        LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
+        ON search_result.uri = video_nsfw_agg.gcs_video_id
+        WHERE video_nsfw_agg.probability > 0.7
         ORDER BY distance
+        LIMIT {search_breadth}
         ;
-        """  # TODO: ReIndexing with NSFW tag
+        """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])
         except Exception as e:
             _LOGGER.warning(f"Error in vector search query: {e}")
             return []
         return result_df.to_dict("records")
+
+##
+# Recency based exploration
+## 
+
 
     def get_random_recent_recommendation(
         self, sample_uris, watch_history_uris, num_results=10, user_canister_id=None
@@ -225,8 +252,11 @@ where video_id in ({video_ids_string})"""
         if not len(watch_history_uris):
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
-            WHERE (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE} search_result
+            LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
+            ON search_result.uri = video_nsfw_agg.gcs_video_id
+            WHERE (search_result.nsfw_ec = 'nudity' OR search_result.nsfw_ec = 'explicit')
+            AND video_nsfw_agg.probability > 0.7
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
@@ -244,9 +274,12 @@ where video_id in ({video_ids_string})"""
             watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE} search_result
+            LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
+            ON search_result.uri = video_nsfw_agg.gcs_video_id
             WHERE uri NOT IN ({watch_history_uris_string})
-            AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
+            AND (search_result.nsfw_ec = 'nudity' OR search_result.nsfw_ec = 'explicit')
+            AND video_nsfw_agg.probability > 0.7
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
@@ -258,10 +291,14 @@ where video_id in ({video_ids_string})"""
             select * from recent_uploads
             order by RAND()
             limit {num_results}
-            """  # Use nsfw tag in this index
+            """
 
         result_df = self.bq.query(query).drop_duplicates(subset=["uri"])
         return result_df.to_dict("records")
+
+##
+# Recency based exploitation
+## 
 
     def get_recency_aware_recommendation(
         self, sample_uris, watch_history_uris, num_results=10, user_canister_id=None
@@ -283,12 +320,12 @@ where video_id in ({video_ids_string})"""
         """
         if not len(sample_uris):
             return []
-        return []  # muting
         search_breadth = 2 * ((int(num_results**0.5)) + 1)
         watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
         sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
         # Not filtering sample URI for nsfw, but only filtering the result  -- moving forward, we should see less and less nsfw in sample URI and it should eventually diminish.
         vs_query = f"""
+        with search_result as (
         SELECT base.uri, base.post_id, base.canister_id, base.timestamp, distance FROM
         VECTOR_SEARCH(
             (
@@ -313,14 +350,18 @@ where video_id in ({video_ids_string})"""
             AND post_id is not null
             AND canister_id is not null
             ),
-            top_k => {search_breadth},
-
+            top_k => 1000,
             options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the 
             -- sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
-
-
+            )
         )
+        SELECT search_result.uri, search_result.post_id, search_result.canister_id, search_result.timestamp, search_result.distance
+        FROM search_result
+        LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
+        ON search_result.uri = video_nsfw_agg.gcs_video_id
+        WHERE video_nsfw_agg.probability > 0.7
         ORDER BY distance 
+        LIMIT {search_breadth}
         """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])
@@ -383,6 +424,11 @@ where video_id in ({video_ids_string})"""
         recency_recommendation = future_recency.result()
         popular_recommendation = future_popular.result()
         random_recent_recommendation = future_random_recent.result()
+
+        if self.logging:
+            url_template = "https://yral.com/hot-or-not/{canister_id}/{post_id}"
+            similar_videos = [url_template.format(canister_id=item["canister_id"], post_id=item["post_id"]) for item in exploit_recommendation]
+            print(f"Similar videos: {"\n".join(similar_videos)}")
 
         def create_feed_response(feed_items):
             return video_recommendation_pb2.MLFeedResponse(
@@ -468,7 +514,9 @@ where video_id in ({video_ids_string})"""
         )
 
         # for debugging
-        _LOGGER.error(f"Length of returned feed: {len(sampled_feed)}")
+        if self.logging:
+            _LOGGER.info(f"Length of returned feed: {len(sampled_feed)}")
+            
         exploitation_count = sum(
             1 for item in sampled_feed if item in response_exploitation
         )
@@ -480,15 +528,17 @@ where video_id in ({video_ids_string})"""
             1 for item in sampled_feed if item in response_random_recent
         )
 
-        _LOGGER.error(
-            f"NSFW feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}"
-        )
+        if self.logging:
+            _LOGGER.info(
+                f"NSFW feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}"
+            )
 
-        _LOGGER.error(
-            f"NSFW feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
-        )  # having logging level at error for quick check. #TODO: remove this
+            _LOGGER.info(
+                f"NSFW feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
+            )
 
-        _LOGGER.error(f"""NSFW feed || Videos recommended: {len(sampled_feed)}""")
+            _LOGGER.info(f"""NSFW feed || Videos recommended: {len(sampled_feed)}""")
+            
         response = create_feed_response(sampled_feed)
         return response
 
@@ -496,6 +546,12 @@ where video_id in ({video_ids_string})"""
 if __name__ == "__main__":
 
     _LOGGER.setLevel(logging.INFO)
+    
+    import sys
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter("[PID %(process)d] %(message)s")
+    handler.setFormatter(formatter)
+    _LOGGER.addHandler(handler)
 
     outer_videos_watched = [
         "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4",
@@ -516,8 +572,8 @@ if __name__ == "__main__":
         (1, "test_canister", "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4")
     ]
 
-    outer_videos_watched = []
-    outer_successful_plays = []
+    # outer_videos_watched = []
+    # outer_successful_plays = []
     outer_num_results = 25
 
     # input_request_parameters
@@ -581,5 +637,6 @@ if __name__ == "__main__":
         f"Time required to get the recommendation: {end_time - start_time:.2f} seconds"
     )
 
+    print("Number of videos recommended: ",len(feed.feed))
     for item in feed.feed:
         print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
