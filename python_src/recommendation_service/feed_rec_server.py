@@ -157,7 +157,7 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         num_results = request.num_results
         user_canister_id = request.canister_id
 
-        return self.clean_recommender_report_filtered_v0.get_collated_recommendation(
+        return self.clean_recommender.get_collated_recommendation(
             successful_plays=successful_plays,
             watch_history_uris=watch_history_uris,
             num_results=num_results,
@@ -165,6 +165,50 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         )
 
     def get_ml_feed_nsfw_v0(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.nsfw_recommender.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_clean_v1(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.clean_recommender_report_filtered_v0.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_nsfw_v1(self, request, context):
         watch_history_uris = [item.video_id for item in request.watch_history] + [
             item.video_id for item in request.filter_posts
         ]

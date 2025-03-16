@@ -111,8 +111,8 @@ def run(port=50059):
         )
         try:
             # response = stub.get_ml_feed(request)
-            response_nsfw = stub.get_ml_feed_nsfw(request)
-            response_clean = stub.get_ml_feed_clean(request)
+            response_nsfw = stub.get_ml_feed_nsfw_v1(request)
+            response_clean = stub.get_ml_feed_clean_v1(request)
 
             # print("Client received: ", response.feed)
             print("NSFW FEED")

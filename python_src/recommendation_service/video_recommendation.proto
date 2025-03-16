@@ -60,7 +60,7 @@ service MLFeed {
   rpc get_ml_feed(MLFeedRequest) returns (MLFeedResponse) {}
   rpc get_ml_feed_clean(MLFeedRequest) returns (MLFeedResponse) {}
   rpc get_ml_feed_nsfw(MLFeedRequest) returns (MLFeedResponse) {}
-  rpc get_ml_feed_clean_v0(MLFeedRequest) returns (MLFeedResponse) {}
-  rpc get_ml_feed_nsfw_v0(MLFeedRequest) returns (MLFeedResponse) {}
+  rpc get_ml_feed_clean_v1(MLFeedRequest) returns (MLFeedResponse) {}
+  rpc get_ml_feed_nsfw_v1(MLFeedRequest) returns (MLFeedResponse) {}
   rpc report_video(VideoReportRequest) returns (VideoReportResponse) {}
 } 
