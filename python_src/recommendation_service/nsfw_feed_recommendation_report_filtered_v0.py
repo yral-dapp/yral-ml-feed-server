@@ -428,7 +428,7 @@ where video_id in ({video_ids_string})"""
         if self.logging:
             url_template = "https://yral.com/hot-or-not/{canister_id}/{post_id}"
             similar_videos = [url_template.format(canister_id=item["canister_id"], post_id=item["post_id"]) for item in exploit_recommendation]
-            print(f"Similar videos: {"\n".join(similar_videos)}")
+            print(similar_videos)
 
         def create_feed_response(feed_items):
             return video_recommendation_pb2.MLFeedResponse(
