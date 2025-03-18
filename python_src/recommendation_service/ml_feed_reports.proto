@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package ml_feed_reports;
+
+message MLFeedReport {
+  string reportee_user_id = 1;
+  string reportee_canister_id = 2;
+  string video_canister_id = 3;
+  string video_post_id = 4;
+  string video_uri = 5;
+  string parent_video_canister_id = 6;
+  string parent_video_post_id = 7;
+  string parent_video_uri = 8;
+  string report_timestamp = 9;
+  string report_type = 10;
+  string reason = 11;
+}

@@ -1,20 +1,22 @@
-# import grpc
-# import video_recommendation_pb2
-# import video_recommendation_pb2_grpc
+import grpc
+import video_recommendation_pb2
+import video_recommendation_pb2_grpc
 
 
-# videos_watched = ['gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4',
-#     'gs://yral-videos/a8e1035908cc4e6e84f1792f8d655f25.mp4',
-#     'gs://yral-videos/9072dc569fe24c6d8ed7504d111cd71f.mp4',
-#     'gs://yral-videos/5054ef5791024da1977b446165aa9fb6.mp4',
-#     'gs://yral-videos/831fc4a20f974090aa7da3bedc9b0499.mp4',
-#     'gs://yral-videos/17e4f909dbf14a0b8b13e2b67ea5e54f.mp4',
-#     'gs://yral-videos/19d5ab6b30914e288db3f8b00dc5ab30.mp4',
-#     'gs://yral-videos/02b0c85d4da34c9aba1cf48b3b476ce8.mp4',
-#     'gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4',
-#     'gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4']
-# successful_plays = videos_watched[:6]
-# filter_response = videos_watched[-1:]
+videos_watched = [
+    "gs://yral-videos/cc75ebcdfcd04163bee6fcf37737f8bd.mp4",
+    "gs://yral-videos/a8e1035908cc4e6e84f1792f8d655f25.mp4",
+    "gs://yral-videos/9072dc569fe24c6d8ed7504d111cd71f.mp4",
+    "gs://yral-videos/5054ef5791024da1977b446165aa9fb6.mp4",
+    "gs://yral-videos/831fc4a20f974090aa7da3bedc9b0499.mp4",
+    "gs://yral-videos/17e4f909dbf14a0b8b13e2b67ea5e54f.mp4",
+    "gs://yral-videos/19d5ab6b30914e288db3f8b00dc5ab30.mp4",
+    "gs://yral-videos/02b0c85d4da34c9aba1cf48b3b476ce8.mp4",
+    "gs://yral-videos/53ec853631a844b48f57e893662daa2c.mp4",
+    "gs://yral-videos/b3aac8dad2ef40b6bc987dcda57abd76.mp4",
+]
+successful_plays = videos_watched[:6]
+filter_response = videos_watched[-1:]
 
 # def run():
 #     # Assuming the server is running on localhost:50059
@@ -109,10 +111,20 @@ def run(port=50059):
         )
         try:
             # response = stub.get_ml_feed(request)
-            response = stub.get_ml_feed_nsfw(request)
+            response_nsfw = stub.get_ml_feed_nsfw_v1(request)
+            response_clean = stub.get_ml_feed_clean_v1(request)
+
             # print("Client received: ", response.feed)
-            for item in response.feed:
+            print("NSFW FEED")
+            for item in response_nsfw.feed:
                 print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
+            print("=" * 100)
+
+            print("CLEAN FEED")
+            for item in response_clean.feed:
+                print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
+            print("=" * 100)
+
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
 

@@ -40,3 +40,4 @@ path = "rust_src/main.rs"
 
 [features]
 local-bin = []
+staging = []

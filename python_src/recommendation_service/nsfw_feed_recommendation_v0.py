@@ -10,6 +10,11 @@ import grpc
 import video_recommendation_pb2
 import video_recommendation_pb2_grpc
 import random
+from recommendation_service.consts import (
+    VIDEO_EMBEDDINGS_TABLE,
+    GLOBAL_POPULAR_VIDEOS_TABLE,
+    VIDEO_INDEX_TABLE
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,7 +41,7 @@ class NsfwRecommendationV0:
         """
         query = f"""
         SELECT uri, post_id, canister_id, timestamp, embedding
-        FROM `yral_ds.video_embeddings`
+        FROM {VIDEO_EMBEDDINGS_TABLE}
         WHERE uri IN UNNEST({uri_list})
         """
         return self.bq.query(query)
@@ -123,7 +128,7 @@ class NsfwRecommendationV0:
         if watched_video_ids != "":
             query = f"""
             SELECT video_id, global_popularity_score
-            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            FROM {GLOBAL_POPULAR_VIDEOS_TABLE}
             WHERE video_id NOT IN ({watched_video_ids})
             AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ORDER BY global_popularity_score DESC
@@ -132,7 +137,7 @@ class NsfwRecommendationV0:
         else:
             query = f"""
             SELECT video_id, global_popularity_score
-            FROM `hot-or-not-feed-intelligence.yral_ds.global_popular_videos_l7d`
+            FROM {GLOBAL_POPULAR_VIDEOS_TABLE}
             WHERE (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -153,14 +158,16 @@ class NsfwRecommendationV0:
     (SELECT value FROM UNNEST(metadata) WHERE name = 'post_id') AS post_id,
     (SELECT value FROM UNNEST(metadata) WHERE name = 'timestamp') AS timestamp,
     (SELECT value FROM UNNEST(metadata) WHERE name = 'canister_id') AS canister_id
-    from 
-    `yral_ds.video_embeddings` 
+    from {VIDEO_EMBEDDINGS_TABLE} 
 )
 select video_id, post_id, canister_id 
 from uri_mapping 
 where video_id in ({video_ids_string})"""
 
+
         mdf = self.bq.query(fetch_post_ids) # mdf - metadata dataframe 
+        if mdf.shape[0] == 0:
+            return []
         mdf = mdf[(mdf.post_id.isna() == False) & (mdf.canister_id.isna() == False)]
         return mdf['post_id canister_id'.split()].to_dict('records')
     
@@ -185,12 +192,12 @@ where video_id in ({video_ids_string})"""
         sample_uris_string = ",".join([f"'{i}'" for i in sample_uris])
         search_breadth = 2*((int(num_results**0.5)) + 1)
 
-        # TODO: ReIndex with nsfw tag
+
         vs_query = f"""
         SELECT base.uri, base.post_id, base.canister_id, distance FROM
         VECTOR_SEARCH(
             (
-                SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+                SELECT * FROM {VIDEO_INDEX_TABLE}
                 WHERE uri NOT IN ({watch_history_uris_string})
                 AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
                 and post_id is not null 
@@ -199,7 +206,7 @@ where video_id in ({video_ids_string})"""
             'embedding',
             (
                 SELECT embedding
-                FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+                FROM {VIDEO_INDEX_TABLE}
                 WHERE uri IN ({sample_uris_string})  
                 AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             ),
@@ -222,7 +229,7 @@ where video_id in ({video_ids_string})"""
         if not len(watch_history_uris):
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
             WHERE (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -236,7 +243,7 @@ where video_id in ({video_ids_string})"""
             watch_history_uris_string = ",".join([f"'{i}'" for i in watch_history_uris])
             query = f"""
             with recent_uploads as (
-            SELECT uri, post_id, canister_id, timestamp FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            SELECT uri, post_id, canister_id, timestamp FROM {VIDEO_INDEX_TABLE}
             WHERE uri NOT IN ({watch_history_uris_string})
             AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
@@ -248,8 +255,7 @@ where video_id in ({video_ids_string})"""
             """ # Use nsfw tag in this index
 
         result_df = self.bq.query(query).drop_duplicates(subset=['uri'])
-        return [] # muting
-        # return result_df.to_dict('records')
+        return result_df.to_dict('records')
 
 
     def get_recency_aware_recommendation(self, sample_uris, watch_history_uris, num_results=10):
@@ -277,7 +283,7 @@ where video_id in ({video_ids_string})"""
         SELECT base.uri, base.post_id, base.canister_id, base.timestamp, distance FROM
         VECTOR_SEARCH(
             (
-            SELECT * FROM `hot-or-not-feed-intelligence.yral_ds.video_index` 
+            SELECT * FROM {VIDEO_INDEX_TABLE} 
             WHERE uri NOT IN ({watch_history_uris_string})
             AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             AND post_id is not null 
@@ -287,7 +293,7 @@ where video_id in ({video_ids_string})"""
             'embedding',
             (
             SELECT embedding
-            FROM `hot-or-not-feed-intelligence.yral_ds.video_index`
+            FROM {VIDEO_INDEX_TABLE}
             WHERE uri IN ({sample_uris_string})
             AND (nsfw_ec = 'nudity' OR nsfw_ec = 'explicit')
             AND post_id is not null

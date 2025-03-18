@@ -1,7 +1,11 @@
 #[cfg(feature = "local-bin")]
 pub const ML_FEED_PY_SERVER: &str = "http://localhost:50059"; //"http://python_proc.process.yral-ml-feed-server.internal:50059";
 
-#[cfg(not(feature = "local-bin"))]
+#[cfg(feature = "staging")]
+pub const ML_FEED_PY_SERVER: &str =
+    "http://python_proc.process.yral-ml-feed-server-staging.internal:50059";
+
+#[cfg(not(any(feature = "local-bin", feature = "staging")))]
 pub const ML_FEED_PY_SERVER: &str = "http://python_proc.process.yral-ml-feed-server.internal:50059";
 
 #[cfg(feature = "local-bin")]
