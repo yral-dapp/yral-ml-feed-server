@@ -34,6 +34,7 @@ _ONE_DAY = datetime.timedelta(days=1)
 _PROCESS_COUNT = multiprocessing.cpu_count()
 # _PROCESS_COUNT = 1  # TODO: stage change book mark
 _THREAD_CONCURRENCY = 10  # heuristic
+# _THREAD_CONCURRENCY = 1  # heuristic TODO: stage change book mark
 _BIND_ADDRESS = "[::]:50059"  # Fixed bind address
 
 
