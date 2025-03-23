@@ -81,10 +81,16 @@ async fn main() -> Result<()> {
     let http_grpc = Steer::new(
         vec![http, grpc_axum],
         |req: &axum::extract::Request, _svcs: &[_]| {
-            if req.headers().get(CONTENT_TYPE).map(|v| v.as_bytes()) != Some(b"application/grpc") {
-                0
-            } else {
+            let content_type = req.headers().get(CONTENT_TYPE).map(|v| v.as_bytes());
+            if content_type == Some(b"application/grpc")
+                || content_type == Some(b"application/grpc-web")
+                || content_type == Some(b"application/grpc-web+proto")
+                || content_type == Some(b"application/grpc-web-text")
+                || content_type == Some(b"application/grpc-web-text+proto")
+            {
                 1
+            } else {
+                0
             }
         },
     );
