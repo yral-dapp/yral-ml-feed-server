@@ -10,13 +10,10 @@ NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NON
 [env]
 PORT = '8080'
 
-[processes]
-rust_proc = "./ml-feed-rust"
-
 [[services]]
 internal_port = 50051
 protocol = "tcp"
-processes = ["rust_proc"]
+processes = ["app"]
 
 [[services.ports]]
 handlers = ["tls"]
