@@ -1,4 +1,4 @@
-
+app = 'yral-ml-feed-server'
 primary_region = 'sin'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
@@ -12,6 +12,7 @@ PORT = '8080'
 
 [processes]
 rust_proc = "./ml-feed-rust"
+python_proc = "/bin/bash -c ./entrypoint.sh $PYTHON_USER"
 
 [[services]]
 internal_port = 50051
