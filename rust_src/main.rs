@@ -73,7 +73,7 @@ async fn main() -> Result<()> {
         .with_state(app_state.clone());
 
     let grpc_axum = Server::builder()
-        .accept_http1(true)
+        // .accept_http1(true)
         .add_service(tonic_web::enable(mlfeed_server))
         .into_service()
         .into_axum_router();
