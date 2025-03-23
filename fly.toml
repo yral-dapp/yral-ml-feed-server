@@ -28,8 +28,3 @@ soft_limit = 500
 memory = '8gb'
 cpu_kind = 'shared'
 cpus = 8
-
-[mounts]
-source = "data"
-destination = "/home/pythonuser"
-initial_size = "50gb"
