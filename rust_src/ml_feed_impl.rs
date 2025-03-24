@@ -232,7 +232,7 @@ impl MlFeed for MLFeedService {
 
         let response_obj = response.into_inner();
 
-        feed_response_logic_nsfw(response_obj, canister_id, limit).await
+        feed_response_logic_without_caching(response_obj).await
     }
 
     async fn report_video(
@@ -268,6 +268,120 @@ impl MlFeed for MLFeedService {
             .map_err(|e| Status::internal(format!("Failed to get ml_feed_py response: {}", e)))?;
 
         Ok(Response::new(VideoReportResponse { success: true }))
+    }
+
+    async fn get_feed_global_cache(
+        &self,
+        request: Request<FeedRequest>,
+    ) -> Result<Response<FeedResponse>, Status> {
+        let req_obj = request.into_inner();
+
+        let mut client = match MlFeedClient::connect(
+            ML_FEED_PY_SERVER, // http://python_proc.process.yral-ml-feed-server.internal:50059"
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                println!("Failed to connect to ml_feed_py server: {:?}", e);
+                return Err(Status::internal("Failed to connect to ml_feed_py server"));
+            }
+        };
+
+        let request = tonic::Request::new(MlFeedRequest {
+            canister_id: "".to_string(),
+            watch_history: vec![],
+            success_history: vec![],
+            filter_posts: vec![],
+            num_results: req_obj.num_results,
+        });
+
+        let response = client.get_ml_feed_clean_v1(request).await.map_err(|e| {
+            Status::internal(format!(
+                "Failed to get get_ml_feed_clean_v1 response: {}",
+                e
+            ))
+        })?;
+
+        let response_obj = response.into_inner();
+
+        feed_response_logic_without_caching(response_obj).await
+    }
+
+    async fn get_feed_global_mixed(
+        &self,
+        request: Request<FeedRequest>,
+    ) -> Result<Response<FeedResponse>, Status> {
+        let req_obj = request.into_inner();
+
+        let mut client = match MlFeedClient::connect(
+            ML_FEED_PY_SERVER, // http://python_proc.process.yral-ml-feed-server.internal:50059"
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                println!("Failed to connect to ml_feed_py server: {:?}", e);
+                return Err(Status::internal("Failed to connect to ml_feed_py server"));
+            }
+        };
+
+        let request = tonic::Request::new(MlFeedRequest {
+            canister_id: "".to_string(),
+            watch_history: vec![],
+            success_history: vec![],
+            filter_posts: vec![],
+            num_results: req_obj.num_results,
+        });
+
+        let response = client.get_ml_feed_clean_v1(request).await.map_err(|e| {
+            Status::internal(format!(
+                "Failed to get get_ml_feed_clean_v1 response: {}",
+                e
+            ))
+        })?;
+
+        let response_obj = response.into_inner();
+
+        feed_response_logic_without_caching(response_obj).await
+    }
+
+    async fn get_feed_global_nsfw(
+        &self,
+        request: Request<FeedRequest>,
+    ) -> Result<Response<FeedResponse>, Status> {
+        let req_obj = request.into_inner();
+
+        let mut client = match MlFeedClient::connect(
+            ML_FEED_PY_SERVER, // http://python_proc.process.yral-ml-feed-server.internal:50059"
+        )
+        .await
+        {
+            Ok(client) => client,
+            Err(e) => {
+                println!("Failed to connect to ml_feed_py server: {:?}", e);
+                return Err(Status::internal("Failed to connect to ml_feed_py server"));
+            }
+        };
+
+        let request = tonic::Request::new(MlFeedRequest {
+            canister_id: "".to_string(),
+            watch_history: vec![],
+            success_history: vec![],
+            filter_posts: vec![],
+            num_results: req_obj.num_results,
+        });
+
+        let response = client.get_ml_feed_nsfw_v1(request).await.map_err(|e| {
+            Status::internal(format!(
+                "Failed to get get_ml_feed_clean_v1 response: {}",
+                e
+            ))
+        })?;
+
+        let response_obj = response.into_inner();
+
+        feed_response_logic_without_caching(response_obj).await
     }
 }
 
@@ -440,10 +554,8 @@ pub async fn get_feed_request_logic_nsfw(
     }))
 }
 
-pub async fn feed_response_logic_nsfw(
+pub async fn feed_response_logic_without_caching(
     response_obj: MlFeedResponse,
-    canister_id: String,
-    limit: usize,
 ) -> Result<Response<FeedResponse>, Status> {
     let response_items = response_obj
         .feed

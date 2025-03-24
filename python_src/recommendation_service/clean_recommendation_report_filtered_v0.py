@@ -46,6 +46,10 @@ class CleanRecommendationReportFilteredV0:
         SELECT uri, post_id, canister_id, timestamp, embedding
         FROM {VIDEO_EMBEDDINGS_TABLE}
         WHERE uri IN UNNEST({uri_list})
+        AND NOT EXISTS (
+            SELECT 1 FROM yral_ds.video_deleted
+            WHERE gcs_video_id = uri
+        )
         """
         return self.bq.query(query)
 
@@ -106,6 +110,10 @@ class CleanRecommendationReportFilteredV0:
                 WHERE SUBSTR(video_uri, 18, ABS(LENGTH(video_uri) - 21)) = video_id
                 AND reportee_canister_id  = '{user_canister_id}'
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM yral_ds.video_deleted
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+            )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -119,6 +127,10 @@ class CleanRecommendationReportFilteredV0:
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE SUBSTR(video_uri, 18, ABS(LENGTH(video_uri) - 21)) = video_id
                 AND reportee_canister_id  = '{user_canister_id}'
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM yral_ds.video_deleted
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
@@ -141,6 +153,10 @@ class CleanRecommendationReportFilteredV0:
     (SELECT value FROM UNNEST(metadata) WHERE name = 'timestamp') AS timestamp,
     (SELECT value FROM UNNEST(metadata) WHERE name = 'canister_id') AS canister_id
     from {VIDEO_EMBEDDINGS_TABLE} 
+    WHERE NOT EXISTS (
+        SELECT 1 FROM yral_ds.video_deleted
+        WHERE gcs_video_id = uri
+    )
 )
 select video_id, post_id, canister_id 
 from uri_mapping 
@@ -188,6 +204,10 @@ where video_id in ({video_ids_string})"""
                     SELECT 1 FROM {REPORT_VIDEO_TABLE}
                     WHERE video_uri = uri
                     AND reportee_canister_id = '{user_canister_id}'
+                )
+                AND NOT EXISTS (
+                    SELECT 1 FROM yral_ds.video_deleted
+                    WHERE gcs_video_id = uri
                 )
             ),
             'embedding',
@@ -248,6 +268,10 @@ where video_id in ({video_ids_string})"""
                 WHERE video_uri = uri
                 AND reportee_canister_id = '{user_canister_id}'
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM yral_ds.video_deleted
+                WHERE gcs_video_id = uri
+            )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
             )
@@ -270,6 +294,10 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
                 AND reportee_canister_id = '{user_canister_id}'
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM yral_ds.video_deleted
+                WHERE gcs_video_id = uri
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -325,6 +353,10 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
                 AND reportee_canister_id = '{user_canister_id}'
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM yral_ds.video_deleted
+                WHERE gcs_video_id = uri
             )
             ),
             'embedding',
@@ -616,8 +648,8 @@ if __name__ == "__main__":
         f"Time required to get the recommendation: {end_time - start_time:.2f} seconds"
     )
 
-    # for item in feed.feed:
-    #     canister_id = item.canister_id
-    #     post_id = item.post_id
-    #     url = f"https://yral.com/hot-or-not/{canister_id}/{post_id}"
-    #     print(f"URL: {url}")
+    for item in feed.feed:
+        canister_id = item.canister_id
+        post_id = item.post_id
+        url = f"https://yral.com/hot-or-not/{canister_id}/{post_id}"
+        print(f"URL: {url}")
