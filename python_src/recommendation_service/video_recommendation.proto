@@ -13,6 +13,14 @@ message MLPostItemResponse {
   string canister_id = 2;
 }
 
+message MLPostItemResponseV2 {
+  uint32 post_id = 1;
+  string canister_id = 2;
+  float nsfw_probability = 3;
+  string video_id = 4;
+}
+
+
 message WatchHistoryItem {
   uint32 post_id = 1;
   string canister_id = 2;
@@ -40,6 +48,7 @@ message MLFeedRequest {
 
 message MLFeedResponse { repeated MLPostItemResponse feed = 1; }
 
+message MLFeedResponseV2 { repeated MLPostItemResponseV2 feed = 1; }
 
 message VideoReportRequest {
   string reportee_user_id = 1;
@@ -63,4 +72,7 @@ service MLFeed {
   rpc get_ml_feed_clean_v1(MLFeedRequest) returns (MLFeedResponse) {}
   rpc get_ml_feed_nsfw_v1(MLFeedRequest) returns (MLFeedResponse) {}
   rpc report_video(VideoReportRequest) returns (VideoReportResponse) {}
+  rpc get_ml_feed_clean_v2(MLFeedRequest) returns (MLFeedResponseV2) {}
+  rpc get_ml_feed_nsfw_v2(MLFeedRequest) returns (MLFeedResponseV2) {}
+  rpc get_ml_feed_combined(MLFeedRequest) returns (MLFeedResponseV2) {}
 } 

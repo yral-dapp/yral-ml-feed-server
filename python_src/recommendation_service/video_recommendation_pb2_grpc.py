@@ -64,6 +64,21 @@ class MLFeedStub(object):
                 request_serializer=recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
                 response_deserializer=recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
                 _registered_method=True)
+        self.get_ml_feed_clean_v2 = channel.unary_unary(
+                '/ml_feed_py.MLFeed/get_ml_feed_clean_v2',
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
+                _registered_method=True)
+        self.get_ml_feed_nsfw_v2 = channel.unary_unary(
+                '/ml_feed_py.MLFeed/get_ml_feed_nsfw_v2',
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
+                _registered_method=True)
+        self.get_ml_feed_combined = channel.unary_unary(
+                '/ml_feed_py.MLFeed/get_ml_feed_combined',
+                request_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+                response_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
+                _registered_method=True)
 
 
 class MLFeedServicer(object):
@@ -105,6 +120,24 @@ class MLFeedServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def get_ml_feed_clean_v2(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def get_ml_feed_nsfw_v2(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def get_ml_feed_combined(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_MLFeedServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -137,6 +170,21 @@ def add_MLFeedServicer_to_server(servicer, server):
                     servicer.report_video,
                     request_deserializer=recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.FromString,
                     response_serializer=recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.SerializeToString,
+            ),
+            'get_ml_feed_clean_v2': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_ml_feed_clean_v2,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.SerializeToString,
+            ),
+            'get_ml_feed_nsfw_v2': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_ml_feed_nsfw_v2,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.SerializeToString,
+            ),
+            'get_ml_feed_combined': grpc.unary_unary_rpc_method_handler(
+                    servicer.get_ml_feed_combined,
+                    request_deserializer=recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.FromString,
+                    response_serializer=recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -301,6 +349,87 @@ class MLFeed(object):
             '/ml_feed_py.MLFeed/report_video',
             recommendation__service_dot_video__recommendation__pb2.VideoReportRequest.SerializeToString,
             recommendation__service_dot_video__recommendation__pb2.VideoReportResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def get_ml_feed_clean_v2(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ml_feed_py.MLFeed/get_ml_feed_clean_v2',
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def get_ml_feed_nsfw_v2(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ml_feed_py.MLFeed/get_ml_feed_nsfw_v2',
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def get_ml_feed_combined(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/ml_feed_py.MLFeed/get_ml_feed_combined',
+            recommendation__service_dot_video__recommendation__pb2.MLFeedRequest.SerializeToString,
+            recommendation__service_dot_video__recommendation__pb2.MLFeedResponseV2.FromString,
             options,
             channel_credentials,
             insecure,
