@@ -85,7 +85,7 @@ pub async fn get_ml_feed_clean_impl(
     };
 
     let response = client
-        .get_ml_feed_clean_v1(request)
+        .get_ml_feed_clean_v2(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
@@ -97,8 +97,8 @@ pub async fn get_ml_feed_clean_impl(
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 0.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 
@@ -176,7 +176,7 @@ pub async fn get_ml_feed_nsfw_impl(
     };
 
     let response = client
-        .get_ml_feed_nsfw_v1(request)
+        .get_ml_feed_nsfw_v2(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
@@ -188,8 +188,8 @@ pub async fn get_ml_feed_nsfw_impl(
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 1.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 
@@ -289,7 +289,7 @@ pub async fn get_ml_feed_mixed_impl(
     };
 
     let response = client
-        .get_ml_feed_nsfw_v1(request)
+        .get_ml_feed_combined(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
@@ -301,8 +301,8 @@ pub async fn get_ml_feed_mixed_impl(
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 1.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 

@@ -26,9 +26,9 @@ pub async fn get_global_cache_clean() -> Result<Vec<PostItem>, anyhow::Error> {
         num_results: 3000,
     });
 
-    let response = client.get_ml_feed_clean_v1(request).await.map_err(|e| {
-        log::error!("Failed to get get_ml_feed_clean_v1 response: {}", e);
-        anyhow::anyhow!("Failed to get get_ml_feed_clean_v1 response: {}", e)
+    let response = client.get_ml_feed_clean_v2(request).await.map_err(|e| {
+        log::error!("Failed to get get_ml_feed_clean_v2 response: {}", e);
+        anyhow::anyhow!("Failed to get get_ml_feed_clean_v2 response: {}", e)
     })?;
 
     let response_obj = response.into_inner();
@@ -39,8 +39,8 @@ pub async fn get_global_cache_clean() -> Result<Vec<PostItem>, anyhow::Error> {
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 0.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 
@@ -68,9 +68,9 @@ pub async fn get_global_cache_nsfw() -> Result<Vec<PostItem>, anyhow::Error> {
         num_results: 3000,
     });
 
-    let response = client.get_ml_feed_nsfw_v1(request).await.map_err(|e| {
-        log::error!("Failed to get get_ml_feed_clean_v1 response: {}", e);
-        anyhow::anyhow!("Failed to get get_ml_feed_clean_v1 response: {}", e)
+    let response = client.get_ml_feed_nsfw_v2(request).await.map_err(|e| {
+        log::error!("Failed to get get_ml_feed_nsfw_v2 response: {}", e);
+        anyhow::anyhow!("Failed to get get_ml_feed_nsfw_v2 response: {}", e)
     })?;
 
     let response_obj = response.into_inner();
@@ -81,8 +81,8 @@ pub async fn get_global_cache_nsfw() -> Result<Vec<PostItem>, anyhow::Error> {
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 1.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 
@@ -110,9 +110,9 @@ pub async fn get_global_cache_mixed() -> Result<Vec<PostItem>, anyhow::Error> {
         num_results: 3000,
     });
 
-    let response = client.get_ml_feed_nsfw_v1(request).await.map_err(|e| {
-        log::error!("Failed to get get_ml_feed_mixed_v1 response: {}", e);
-        anyhow::anyhow!("Failed to get get_ml_feed_mixed_v1 response: {}", e)
+    let response = client.get_ml_feed_combined(request).await.map_err(|e| {
+        log::error!("Failed to get get_ml_feed_combined response: {}", e);
+        anyhow::anyhow!("Failed to get get_ml_feed_combined response: {}", e)
     })?;
 
     let response_obj = response.into_inner();
@@ -123,8 +123,8 @@ pub async fn get_global_cache_mixed() -> Result<Vec<PostItem>, anyhow::Error> {
         .map(|x| PostItem {
             canister_id: x.canister_id.clone(),
             post_id: x.post_id as u64,
-            video_id: "".to_string(),
-            nsfw_probability: 1.0,
+            video_id: x.video_id.clone(),
+            nsfw_probability: x.nsfw_probability,
         })
         .collect::<Vec<PostItem>>();
 
