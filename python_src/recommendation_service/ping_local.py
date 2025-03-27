@@ -111,20 +111,29 @@ def run(port=50059):
         )
         try:
             # response = stub.get_ml_feed(request)
-            response_nsfw = stub.get_ml_feed_nsfw_v1(request)
-            response_clean = stub.get_ml_feed_clean_v1(request)
+            response_nsfw = stub.get_ml_feed_nsfw_v2(request)
+            response_clean = stub.get_ml_feed_clean_v2(request)
+            response_combined = stub.get_ml_feed_combined(request)
 
             # print("Client received: ", response.feed)
             print("NSFW FEED")
             for item in response_nsfw.feed:
                 print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
+                print(f"NSFW probability: {item.nsfw_probability}")
+                print(f"Video ID: {item.video_id}")
             print("=" * 100)
 
             print("CLEAN FEED")
             for item in response_clean.feed:
                 print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
+                print(f"NSFW probability: {item.nsfw_probability}")
+                print(f"Video ID: {item.video_id}")
             print("=" * 100)
 
+            print("COMBINED FEED")
+            for item in response_combined.feed:
+                print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
+                print("=" * 100)
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
 

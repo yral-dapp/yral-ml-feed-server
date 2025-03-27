@@ -1,4 +1,4 @@
-
+app = 'yral-ml-feed-server'
 primary_region = 'sin'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
@@ -10,10 +10,14 @@ NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NON
 [env]
 PORT = '8080'
 
+[processes]
+rust_proc = "./ml-feed-rust"
+python_proc = "/bin/bash -c ./entrypoint.sh $PYTHON_USER"
+
 [[services]]
 internal_port = 50051
 protocol = "tcp"
-processes = ["app"]
+processes = ["rust_proc"]
 
 [[services.ports]]
 handlers = ["tls"]
@@ -28,3 +32,8 @@ soft_limit = 500
 memory = '8gb'
 cpu_kind = 'shared'
 cpus = 8
+
+[mounts]
+source = "data"
+destination = "/home/pythonuser"
+initial_size = "50gb"

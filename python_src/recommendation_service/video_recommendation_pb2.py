@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n1recommendation_service/video_recommendation.proto\x12\nml_feed_py\"D\n\nMLPostItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\":\n\x12MLPostItemResponse\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\"v\n\x10WatchHistoryItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\x12\x17\n\x0fpercent_watched\x18\x04 \x01(\x02\x12\x11\n\ttimestamp\x18\x05 \x01(\t\"\x8b\x01\n\x12SuccessHistoryItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\x12\x11\n\titem_type\x18\x04 \x01(\t\x12\x17\n\x0fpercent_watched\x18\x05 \x01(\x02\x12\x11\n\ttimestamp\x18\x06 \x01(\t\"\xd5\x01\n\rMLFeedRequest\x12\x13\n\x0b\x63\x61nister_id\x18\x01 \x01(\t\x12\x33\n\rwatch_history\x18\x02 \x03(\x0b\x32\x1c.ml_feed_py.WatchHistoryItem\x12\x37\n\x0fsuccess_history\x18\x03 \x03(\x0b\x32\x1e.ml_feed_py.SuccessHistoryItem\x12,\n\x0c\x66ilter_posts\x18\x04 \x03(\x0b\x32\x16.ml_feed_py.MLPostItem\x12\x13\n\x0bnum_results\x18\x05 \x01(\r\">\n\x0eMLFeedResponse\x12,\n\x04\x66\x65\x65\x64\x18\x01 \x03(\x0b\x32\x1e.ml_feed_py.MLPostItemResponse\"\xa0\x01\n\x12VideoReportRequest\x12\x18\n\x10reportee_user_id\x18\x01 \x01(\t\x12\x1c\n\x14reportee_canister_id\x18\x02 \x01(\t\x12\x19\n\x11video_canister_id\x18\x03 \x01(\t\x12\x15\n\rvideo_post_id\x18\x04 \x01(\r\x12\x10\n\x08video_id\x18\x05 \x01(\t\x12\x0e\n\x06reason\x18\x06 \x01(\t\"&\n\x13VideoReportResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x32\xdf\x03\n\x06MLFeed\x12\x46\n\x0bget_ml_feed\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12L\n\x11get_ml_feed_clean\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12K\n\x10get_ml_feed_nsfw\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12O\n\x14get_ml_feed_clean_v1\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12N\n\x13get_ml_feed_nsfw_v1\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12Q\n\x0creport_video\x12\x1e.ml_feed_py.VideoReportRequest\x1a\x1f.ml_feed_py.VideoReportResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n1recommendation_service/video_recommendation.proto\x12\nml_feed_py\"D\n\nMLPostItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\":\n\x12MLPostItemResponse\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\"h\n\x14MLPostItemResponseV2\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x18\n\x10nsfw_probability\x18\x03 \x01(\x02\x12\x10\n\x08video_id\x18\x04 \x01(\t\"v\n\x10WatchHistoryItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\x12\x17\n\x0fpercent_watched\x18\x04 \x01(\x02\x12\x11\n\ttimestamp\x18\x05 \x01(\t\"\x8b\x01\n\x12SuccessHistoryItem\x12\x0f\n\x07post_id\x18\x01 \x01(\r\x12\x13\n\x0b\x63\x61nister_id\x18\x02 \x01(\t\x12\x10\n\x08video_id\x18\x03 \x01(\t\x12\x11\n\titem_type\x18\x04 \x01(\t\x12\x17\n\x0fpercent_watched\x18\x05 \x01(\x02\x12\x11\n\ttimestamp\x18\x06 \x01(\t\"\xd5\x01\n\rMLFeedRequest\x12\x13\n\x0b\x63\x61nister_id\x18\x01 \x01(\t\x12\x33\n\rwatch_history\x18\x02 \x03(\x0b\x32\x1c.ml_feed_py.WatchHistoryItem\x12\x37\n\x0fsuccess_history\x18\x03 \x03(\x0b\x32\x1e.ml_feed_py.SuccessHistoryItem\x12,\n\x0c\x66ilter_posts\x18\x04 \x03(\x0b\x32\x16.ml_feed_py.MLPostItem\x12\x13\n\x0bnum_results\x18\x05 \x01(\r\">\n\x0eMLFeedResponse\x12,\n\x04\x66\x65\x65\x64\x18\x01 \x03(\x0b\x32\x1e.ml_feed_py.MLPostItemResponse\"B\n\x10MLFeedResponseV2\x12.\n\x04\x66\x65\x65\x64\x18\x01 \x03(\x0b\x32 .ml_feed_py.MLPostItemResponseV2\"\xa0\x01\n\x12VideoReportRequest\x12\x18\n\x10reportee_user_id\x18\x01 \x01(\t\x12\x1c\n\x14reportee_canister_id\x18\x02 \x01(\t\x12\x19\n\x11video_canister_id\x18\x03 \x01(\t\x12\x15\n\rvideo_post_id\x18\x04 \x01(\r\x12\x10\n\x08video_id\x18\x05 \x01(\t\x12\x0e\n\x06reason\x18\x06 \x01(\t\"&\n\x13VideoReportResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x32\xd7\x05\n\x06MLFeed\x12\x46\n\x0bget_ml_feed\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12L\n\x11get_ml_feed_clean\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12K\n\x10get_ml_feed_nsfw\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12O\n\x14get_ml_feed_clean_v1\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12N\n\x13get_ml_feed_nsfw_v1\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1a.ml_feed_py.MLFeedResponse\"\x00\x12Q\n\x0creport_video\x12\x1e.ml_feed_py.VideoReportRequest\x1a\x1f.ml_feed_py.VideoReportResponse\"\x00\x12Q\n\x14get_ml_feed_clean_v2\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1c.ml_feed_py.MLFeedResponseV2\"\x00\x12P\n\x13get_ml_feed_nsfw_v2\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1c.ml_feed_py.MLFeedResponseV2\"\x00\x12Q\n\x14get_ml_feed_combined\x12\x19.ml_feed_py.MLFeedRequest\x1a\x1c.ml_feed_py.MLFeedResponseV2\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,18 +35,22 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_MLPOSTITEM']._serialized_end=133
   _globals['_MLPOSTITEMRESPONSE']._serialized_start=135
   _globals['_MLPOSTITEMRESPONSE']._serialized_end=193
-  _globals['_WATCHHISTORYITEM']._serialized_start=195
-  _globals['_WATCHHISTORYITEM']._serialized_end=313
-  _globals['_SUCCESSHISTORYITEM']._serialized_start=316
-  _globals['_SUCCESSHISTORYITEM']._serialized_end=455
-  _globals['_MLFEEDREQUEST']._serialized_start=458
-  _globals['_MLFEEDREQUEST']._serialized_end=671
-  _globals['_MLFEEDRESPONSE']._serialized_start=673
-  _globals['_MLFEEDRESPONSE']._serialized_end=735
-  _globals['_VIDEOREPORTREQUEST']._serialized_start=738
-  _globals['_VIDEOREPORTREQUEST']._serialized_end=898
-  _globals['_VIDEOREPORTRESPONSE']._serialized_start=900
-  _globals['_VIDEOREPORTRESPONSE']._serialized_end=938
-  _globals['_MLFEED']._serialized_start=941
-  _globals['_MLFEED']._serialized_end=1420
+  _globals['_MLPOSTITEMRESPONSEV2']._serialized_start=195
+  _globals['_MLPOSTITEMRESPONSEV2']._serialized_end=299
+  _globals['_WATCHHISTORYITEM']._serialized_start=301
+  _globals['_WATCHHISTORYITEM']._serialized_end=419
+  _globals['_SUCCESSHISTORYITEM']._serialized_start=422
+  _globals['_SUCCESSHISTORYITEM']._serialized_end=561
+  _globals['_MLFEEDREQUEST']._serialized_start=564
+  _globals['_MLFEEDREQUEST']._serialized_end=777
+  _globals['_MLFEEDRESPONSE']._serialized_start=779
+  _globals['_MLFEEDRESPONSE']._serialized_end=841
+  _globals['_MLFEEDRESPONSEV2']._serialized_start=843
+  _globals['_MLFEEDRESPONSEV2']._serialized_end=909
+  _globals['_VIDEOREPORTREQUEST']._serialized_start=912
+  _globals['_VIDEOREPORTREQUEST']._serialized_end=1072
+  _globals['_VIDEOREPORTRESPONSE']._serialized_start=1074
+  _globals['_VIDEOREPORTRESPONSE']._serialized_end=1112
+  _globals['_MLFEED']._serialized_start=1115
+  _globals['_MLFEED']._serialized_end=1842
 # @@protoc_insertion_point(module_scope)

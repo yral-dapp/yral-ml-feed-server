@@ -2,18 +2,20 @@ use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 
-use anyhow::anyhow;
-use candid::Principal;
-use ic_agent::Agent;
-use ml_feed::{
+use crate::grpc_services::ml_feed::{
     FeedRequest, FeedResponse, FeedResponseV1, PostItem, PostItemResponse, VideoReportRequest,
     VideoReportResponse,
 };
+use anyhow::anyhow;
+use candid::Principal;
+use ic_agent::Agent;
 
-use ml_feed::ml_feed_server::MlFeed;
-use ml_feed_py::ml_feed_client::MlFeedClient;
-use ml_feed_py::{MlFeedRequest, MlFeedResponse};
-use off_chain::off_chain_canister_client::OffChainCanisterClient;
+use crate::grpc_services::ml_feed::ml_feed_server::MlFeed;
+use crate::grpc_services::ml_feed_py;
+use crate::grpc_services::ml_feed_py::ml_feed_client::MlFeedClient;
+use crate::grpc_services::ml_feed_py::{MlFeedRequest, MlFeedResponse};
+use crate::grpc_services::off_chain;
+use crate::grpc_services::off_chain::off_chain_canister_client::OffChainCanisterClient;
 use prost::bytes::buf::Limit;
 use serde::{Deserialize, Serialize};
 use tonic::metadata::MetadataValue;
@@ -23,22 +25,6 @@ use tonic::{Request, Response, Status};
 use crate::consts::{CLOUDFLARE_ML_FEED_CACHE_WORKER_URL, ML_FEED_PY_SERVER, OFF_CHAIN_AGENT};
 use crate::utils::{to_rfc3339, to_rfc3339_did_systemtime};
 use crate::{canister, AppState};
-
-pub mod ml_feed {
-    tonic::include_proto!("ml_feed");
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("ml_feed_descriptor");
-}
-
-pub mod ml_feed_py {
-    tonic::include_proto!("ml_feed_py");
-    pub(crate) const FILE_DESCRIPTOR_SET: &[u8] =
-        tonic::include_file_descriptor_set!("ml_feed_py_descriptor");
-}
-
-pub mod off_chain {
-    tonic::include_proto!("offchain_canister");
-}
 
 pub struct MLFeedService {
     pub shared_state: Arc<AppState>,
