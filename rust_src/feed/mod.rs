@@ -30,7 +30,7 @@ use yral_ml_feed_cache::{
 
 pub mod utils;
 
-use crate::AppState;
+use crate::{utils::remove_duplicates, AppState};
 
 pub fn feed_router(state: Arc<AppState>) -> OpenApiRouter {
     OpenApiRouter::new()
@@ -111,7 +111,9 @@ async fn get_feed_coldstart_clean_v2(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
-    Ok(Json(FeedResponse { posts: feed }))
+    Ok(Json(FeedResponse {
+        posts: remove_duplicates(feed),
+    }))
 }
 
 #[utoipa::path(
@@ -179,7 +181,9 @@ async fn get_feed_coldstart_nsfw_v2(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
-    Ok(Json(FeedResponse { posts: feed }))
+    Ok(Json(FeedResponse {
+        posts: remove_duplicates(feed),
+    }))
 }
 
 #[utoipa::path(
@@ -247,7 +251,9 @@ async fn get_feed_coldstart_mixed_v2(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
-    Ok(Json(FeedResponse { posts: feed }))
+    Ok(Json(FeedResponse {
+        posts: remove_duplicates(feed),
+    }))
 }
 
 #[utoipa::path(
@@ -279,6 +285,8 @@ async fn get_feed_clean_v2(
         log::error!("Failed to get ml_feed_clean_impl: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
+
+    let feed = remove_duplicates(feed);
 
     if feed.len() > payload.num_results as usize {
         let (first_part, rest) = feed.split_at(payload.num_results as usize);
@@ -335,6 +343,8 @@ async fn get_feed_nsfw_v2(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    let feed = remove_duplicates(feed);
+
     if feed.len() > payload.num_results as usize {
         let (first_part, rest) = feed.split_at(payload.num_results as usize);
 
@@ -390,6 +400,8 @@ async fn get_feed_mixed_v2(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    let feed = remove_duplicates(feed);
+
     if feed.len() > payload.num_results as usize {
         let (first_part, rest) = feed.split_at(payload.num_results as usize);
 
@@ -435,6 +447,8 @@ async fn update_global_cache_clean(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    let feed = remove_duplicates(feed);
+
     state
         .ml_feed_cache
         .add_global_cache_items(GLOBAL_CACHE_CLEAN_KEY, feed)
@@ -467,6 +481,8 @@ async fn update_global_cache_nsfw(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
 
+    let feed = remove_duplicates(feed);
+
     state
         .ml_feed_cache
         .add_global_cache_items(GLOBAL_CACHE_NSFW_KEY, feed)
@@ -498,6 +514,8 @@ async fn update_global_cache_mixed(
         log::error!("Failed to get global cache clean: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
+
+    let feed = remove_duplicates(feed);
 
     state
         .ml_feed_cache

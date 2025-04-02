@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use yral_ml_feed_cache::types::PostItem;
 
 use crate::canister::individual_user_template::SystemTime;
 
@@ -15,4 +16,13 @@ pub fn to_rfc3339(dt: std::time::SystemTime) -> String {
 pub fn to_system_time(nanos_since_epoch: u32, secs_since_epoch: u64) -> std::time::SystemTime {
     let duration = std::time::Duration::new(secs_since_epoch, nanos_since_epoch);
     std::time::SystemTime::UNIX_EPOCH + duration
+}
+
+pub fn remove_duplicates(posts: Vec<PostItem>) -> Vec<PostItem> {
+    let mut seen = std::collections::HashSet::new();
+
+    posts
+        .into_iter()
+        .filter(|post| seen.insert((post.canister_id.clone(), post.post_id)))
+        .collect::<Vec<PostItem>>()
 }
