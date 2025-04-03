@@ -15,7 +15,8 @@ if not use_stage:
     VIDEO_INDEX_TABLE = f"`{PROJECT_ID}.{DATASET}.video_index`"
     REPORT_VIDEO_TABLE = f"`{PROJECT_ID}.{DATASET}.ml_feed_reports`"
     VIDEO_NSFW_TABLE = f"`{DATASET}.video_nsfw_agg`"
-
+    DELETE_VIDEO_TABLE = f"`{DATASET}.video_deleted`"
+    DUPLICATE_VIDEO_TABLE = f"`{DATASET}.duplicate_videos`"
 else:
     # Stage table names
     VIDEO_EMBEDDINGS_TABLE = (

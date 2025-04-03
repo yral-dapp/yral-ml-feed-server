@@ -75,4 +75,7 @@ service MLFeed {
   rpc get_ml_feed_clean_v2(MLFeedRequest) returns (MLFeedResponseV2) {}
   rpc get_ml_feed_nsfw_v2(MLFeedRequest) returns (MLFeedResponseV2) {}
   rpc get_ml_feed_combined(MLFeedRequest) returns (MLFeedResponseV2) {}
+  rpc get_ml_feed_clean_v2_deduped(MLFeedRequest) returns (MLFeedResponseV2) {}
+  rpc get_ml_feed_nsfw_v2_deduped(MLFeedRequest) returns (MLFeedResponseV2) {}
+  rpc get_ml_feed_combined_deduped(MLFeedRequest) returns (MLFeedResponseV2) {}
 } 
