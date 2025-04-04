@@ -77,7 +77,6 @@ filter_responses = [
 ]
 
 # videos_watched = successful_plays = filter_responses = []
-videos_watched = successful_plays = filter_responses = []
 
 
 def run(port=50059):
@@ -110,17 +109,19 @@ def run(port=50059):
             num_results=25,
         )
         try:
-            # response = stub.get_ml_feed(request)
-            response_nsfw = stub.get_ml_feed_nsfw_v2(request)
-            response_clean = stub.get_ml_feed_clean_v2(request)
-            response_combined = stub.get_ml_feed_combined(request)
+            response = stub.get_ml_feed(request)
+            response_nsfw = stub.get_ml_feed_nsfw_v2_deduped(request)
+            response_clean = stub.get_ml_feed_clean_v2_deduped(request)
+            response_combined = stub.get_ml_feed_combined_deduped(request)
 
-            # print("Client received: ", response.feed)
+            print("Client received: ", response.feed)
             print("NSFW FEED")
             for item in response_nsfw.feed:
                 print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
                 print(f"NSFW probability: {item.nsfw_probability}")
                 print(f"Video ID: {item.video_id}")
+            print("=" * 100)
+            print("=" * 100)
             print("=" * 100)
 
             print("CLEAN FEED")
@@ -129,11 +130,18 @@ def run(port=50059):
                 print(f"NSFW probability: {item.nsfw_probability}")
                 print(f"Video ID: {item.video_id}")
             print("=" * 100)
+            print("=" * 100)
+            print("=" * 100)
 
             print("COMBINED FEED")
             for item in response_combined.feed:
                 print(f"https://yral.com/hot-or-not/{item.canister_id}/{item.post_id}")
-                print("=" * 100)
+            
+            print("=" * 100)
+            print("=" * 100)
+            print("=" * 100)
+        
+    
         except grpc.RpcError as e:
             print(f"RPC failed: {e.code()} {e.details()}")
 

@@ -31,6 +31,10 @@ from report_video_v0 import ReportVideoV0
 from clean_recommendation_v2 import CleanRecommendationV2
 from nsfw_recommendation_v2 import NsfwRecommendationV2
 from combined_recommendation_v2 import CombinedRecommendationV2
+# Import deduped v2 recommendation classes
+from clean_recommendation_v2_deduped import CleanRecommendationV2Deduped
+from nsfw_recommendation_v2_deduped import NsfwRecommendationV2Deduped
+from combined_recommendation_v2_deduped import CombinedRecommendationV2Deduped
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,6 +92,10 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         self.clean_recommender_v2 = CleanRecommendationV2()
         self.nsfw_recommender_v2 = NsfwRecommendationV2()
         self.combined_recommender_v2 = CombinedRecommendationV2()
+        # Initialize deduped v2 recommenders
+        self.clean_recommender_v2_deduped = CleanRecommendationV2Deduped()
+        self.nsfw_recommender_v2_deduped = NsfwRecommendationV2Deduped()
+        self.combined_recommender_v2_deduped = CombinedRecommendationV2Deduped()
         return
 
     def get_ml_feed(self, request, context):
@@ -299,6 +307,72 @@ class MLFeedServicer(video_recommendation_pb2_grpc.MLFeedServicer):
         user_canister_id = request.canister_id
 
         return self.combined_recommender_v2.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_clean_v2_deduped(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.clean_recommender_v2_deduped.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_nsfw_v2_deduped(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.nsfw_recommender_v2_deduped.get_collated_recommendation(
+            successful_plays=successful_plays,
+            watch_history_uris=watch_history_uris,
+            num_results=num_results,
+            user_canister_id=user_canister_id,
+        )
+
+    def get_ml_feed_combined_deduped(self, request, context):
+        watch_history_uris = [item.video_id for item in request.watch_history] + [
+            item.video_id for item in request.filter_posts
+        ]
+        successful_plays = [
+            {
+                "video_uri": item.video_id,
+                "item_type": item.item_type,
+                "percent_watched": item.percent_watched,
+            }
+            for item in request.success_history
+        ]
+        num_results = request.num_results
+        user_canister_id = request.canister_id
+
+        return self.combined_recommender_v2_deduped.get_collated_recommendation(
             successful_plays=successful_plays,
             watch_history_uris=watch_history_uris,
             num_results=num_results,
