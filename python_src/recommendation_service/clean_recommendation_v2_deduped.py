@@ -284,6 +284,7 @@ where video_id in ({video_ids_string})"""
             ON search_result.uri = video_nsfw_agg.gcs_video_id
             WHERE search_result.is_nsfw = False AND search_result.nsfw_ec = 'neutral'
             AND video_nsfw_agg.probability < 0.4
+            AND TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP(SUBSTR(timestamp, 1, 26)), DAY) <= 7
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
@@ -566,10 +567,10 @@ where video_id in ({video_ids_string})"""
             exploration_score,
             random_recent_score,
         ) = (
-            exploit_score/8,
-            exploit_score*7/8,
-            exploration_score * (1/8),
-            exploration_score * (7/8),
+            exploit_score/4,
+            exploit_score*3/4,
+            exploration_score * (1/4),
+            exploration_score * (3/4),
         )
 
         combined_feed = (
