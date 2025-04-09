@@ -118,6 +118,7 @@ class CleanRecommendationV2Deduped:
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                AND exact_duplicate = True
             )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
@@ -140,6 +141,7 @@ class CleanRecommendationV2Deduped:
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                AND exact_duplicate = True
             )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
@@ -221,6 +223,7 @@ where video_id in ({video_ids_string})"""
                 AND NOT EXISTS (
                     SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                     WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                    AND exact_duplicate = True
                 )
             ),
             'embedding',
@@ -293,6 +296,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -327,6 +331,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -390,6 +395,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             ),
             'embedding',
@@ -560,10 +566,10 @@ where video_id in ({video_ids_string})"""
             exploration_score,
             random_recent_score,
         ) = (
-            exploit_score / 2,
-            exploit_score / 2,
-            exploration_score * (2 / 4),
-            exploration_score * (2 / 4),
+            exploit_score/8,
+            exploit_score*7/8,
+            exploration_score * (1/8),
+            exploration_score * (7/8),
         )
 
         combined_feed = (

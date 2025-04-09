@@ -118,6 +118,7 @@ class CombinedRecommendationV2Deduped:
             AND NOT EXISTS (
                 SELECT 1 from {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                AND exact_duplicate = True
             )
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -217,6 +218,7 @@ where video_id in ({video_ids_string})"""
                 AND NOT EXISTS (
                     SELECT 1 from {DUPLICATE_VIDEO_TABLE}
                     WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                    AND exact_duplicate = True
                 )
             ),
             'embedding',
@@ -286,6 +288,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 from {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -320,6 +323,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 from {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -382,6 +386,7 @@ where video_id in ({video_ids_string})"""
             AND NOT EXISTS (
                 SELECT 1 from {DUPLICATE_VIDEO_TABLE}
                 WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             ),
             'embedding',
