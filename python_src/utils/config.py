@@ -12,7 +12,7 @@ class Config:
             "project": os.getenv("PROJECT"),
             "service_cred": os.getenv("SERVICE_CRED"),
             "video_bucket_name": os.getenv("GS_VIDEO_BUCKET"),
-            "logging": False,
+            "logging": True,
         }
 
     def get(self, key, default=None):
