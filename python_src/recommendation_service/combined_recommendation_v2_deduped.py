@@ -276,7 +276,8 @@ where video_id in ({video_ids_string})"""
             FROM {VIDEO_INDEX_TABLE} search_result
             LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
             ON search_result.uri = video_nsfw_agg.gcs_video_id
-            WHERE NOT EXISTS (
+            WHERE TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP(SUBSTR(timestamp, 1, 26)), DAY) <= 2
+            AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
                 AND reportee_canister_id = '{user_canister_id}'
@@ -309,8 +310,7 @@ where video_id in ({video_ids_string})"""
             LEFT JOIN {VIDEO_NSFW_TABLE} as video_nsfw_agg
             ON search_result.uri = video_nsfw_agg.gcs_video_id
             WHERE search_result.uri NOT IN ({watch_history_uris_string})
-            AND search_result.is_nsfw = False and search_result.nsfw_ec = 'neutral'
-            AND video_nsfw_agg.probability < 0.4
+            AND TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP(SUBSTR(timestamp, 1, 26)), DAY) <= 2
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
@@ -557,10 +557,10 @@ where video_id in ({video_ids_string})"""
             exploration_score,
             random_recent_score,
         ) = (
-            exploit_score / 2,
-            exploit_score / 2,
-            exploration_score * (2 / 4),
-            exploration_score * (2 / 4),
+            exploit_score /5,
+            exploit_score *4/5,
+            exploration_score * (1/5),
+            exploration_score * (4/5),
         )
 
         combined_feed = (
@@ -605,14 +605,15 @@ where video_id in ({video_ids_string})"""
         )
         
         if self.logging:
-            _LOGGER.info(
+            print(
             f"Combined feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}"
         )
 
         if self.logging:
-            _LOGGER.info(
+            print(
                 f"Combined feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
             )  # having logging level at error for quick check. #TODO: remove this
+
 
         if self.logging:
             _LOGGER.info(f"""Combined feed || Videos recommended: {len(sampled_feed)}""")
