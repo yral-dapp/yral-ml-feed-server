@@ -27,7 +27,6 @@ pub mod grpc_services;
 pub mod ml_feed_impl;
 pub mod utils;
 
-#[instrument]
 async fn main_impl() -> Result<()> {
     #[derive(OpenApi)]
     #[openapi(
