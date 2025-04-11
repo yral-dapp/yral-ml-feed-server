@@ -9,6 +9,7 @@ NONROOT_USER = "pythonuser" # Access this value in the Dockerfile using `ARG NON
 
 [env]
 PORT = '8080'
+SENTRY_ENVIRONMENT = "staging"
 
 [[services]]
 internal_port = 50051
