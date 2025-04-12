@@ -117,7 +117,8 @@ class CleanRecommendationV2Deduped:
             )
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                AND exact_duplicate = True
             )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
@@ -139,7 +140,8 @@ class CleanRecommendationV2Deduped:
             )
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
+                AND exact_duplicate = True
             )
             AND nsfw_probability < 0.4
             ORDER BY global_popularity_score DESC
@@ -220,7 +222,8 @@ where video_id in ({video_ids_string})"""
                 )
                 AND NOT EXISTS (
                     SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                    WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                    WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                    AND exact_duplicate = True
                 )
             ),
             'embedding',
@@ -281,6 +284,7 @@ where video_id in ({video_ids_string})"""
             ON search_result.uri = video_nsfw_agg.gcs_video_id
             WHERE search_result.is_nsfw = False AND search_result.nsfw_ec = 'neutral'
             AND video_nsfw_agg.probability < 0.4
+            AND TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP(SUBSTR(timestamp, 1, 26)), DAY) <= 2
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
                 WHERE video_uri = uri
@@ -292,7 +296,8 @@ where video_id in ({video_ids_string})"""
             )
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -314,6 +319,7 @@ where video_id in ({video_ids_string})"""
             ON search_result.uri = video_nsfw_agg.gcs_video_id
             WHERE search_result.uri NOT IN ({watch_history_uris_string})
             AND search_result.is_nsfw = False AND search_result.nsfw_ec = 'neutral'
+            AND TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), TIMESTAMP(SUBSTR(timestamp, 1, 26)), DAY) <= 2
             AND video_nsfw_agg.probability < 0.4
             AND NOT EXISTS (
                 SELECT 1 FROM {REPORT_VIDEO_TABLE}
@@ -326,7 +332,8 @@ where video_id in ({video_ids_string})"""
             )
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -389,7 +396,8 @@ where video_id in ({video_ids_string})"""
             )
             AND NOT EXISTS (
                 SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
+                AND exact_duplicate = True
             )
             ),
             'embedding',
@@ -560,10 +568,10 @@ where video_id in ({video_ids_string})"""
             exploration_score,
             random_recent_score,
         ) = (
-            exploit_score / 2,
-            exploit_score / 2,
-            exploration_score * (2 / 4),
-            exploration_score * (2 / 4),
+            exploit_score/5,
+            exploit_score*4/5,
+            exploration_score * (1/5),
+            exploration_score * (4/5),
         )
 
         combined_feed = (

@@ -76,11 +76,11 @@ filter_responses = [
 
 # videos_watched = successful_plays = filter_responses = []
 videos_watched = successful_plays = filter_responses = []
-
+url = "https://yral-ml-feed-server-staging.fly.dev/"
 
 def run(port=50059):
     # Assuming the server is running on localhost and port 50059
-    with grpc.insecure_channel(f"localhost:{port}") as channel:
+    with grpc.insecure_channel(f"{url}:{port}") as channel:
         stub = video_recommendation_pb2_grpc.MLFeedStub(channel)
         # Create a test request with dummy data
         # response = stub.get_ml_feed(video_recommendation_pb2.MLFeedRequest(canister_id="123"))

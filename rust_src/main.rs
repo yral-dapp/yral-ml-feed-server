@@ -3,22 +3,18 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 use anyhow::Result;
 use app_state::AppState;
 use axum::{routing::get, Router};
-use canister::init_agent;
-use consts::ML_FEED_PY_SERVER;
-use env_logger::{Builder, Target};
-use grpc_services::{
-    ml_feed::ml_feed_server::MlFeedServer, ml_feed_py::ml_feed_client::MlFeedClient,
-};
+use grpc_services::ml_feed::ml_feed_server::MlFeedServer;
 use http::{header::CONTENT_TYPE, StatusCode};
-use ic_agent::Agent;
-use log::LevelFilter;
 use ml_feed_impl::MLFeedService;
-use tonic::codegen::http::header::HeaderName;
-use tonic::transport::Server;
-use tonic_web::GrpcWebLayer;
+use sentry_tower::{NewSentryLayer, SentryHttpLayer};
+use tonic::service::Routes;
+use tower::ServiceBuilder;
 use tower::{make::Shared, steer::Steer};
-use tower_http::cors::{AllowOrigin, CorsLayer};
-use utoipa::{openapi, OpenApi};
+use tower_http::cors::CorsLayer;
+use tracing::instrument;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -31,14 +27,7 @@ pub mod grpc_services;
 pub mod ml_feed_impl;
 pub mod utils;
 
-const DEFAULT_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
-const DEFAULT_EXPOSED_HEADERS: [&str; 3] =
-    ["grpc-status", "grpc-message", "grpc-status-details-bin"];
-const DEFAULT_ALLOW_HEADERS: [&str; 4] =
-    ["x-grpc-web", "content-type", "x-user-agent", "grpc-timeout"];
-
-#[tokio::main]
-async fn main() -> Result<()> {
+async fn main_impl() -> Result<()> {
     #[derive(OpenApi)]
     #[openapi(
         tags(
@@ -47,12 +36,10 @@ async fn main() -> Result<()> {
     )]
     struct ApiDoc;
 
-    Builder::new()
-        .filter_level(LevelFilter::Info)
-        .target(Target::Stdout)
-        .init();
-
     let app_state = Arc::new(AppState::new().await);
+    let sentry_tower_layer = ServiceBuilder::new()
+        .layer(NewSentryLayer::new_from_top())
+        .layer(SentryHttpLayer::with_transaction());
 
     let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .nest("/api/v1/feed", feed::feed_router(app_state.clone()))
@@ -68,15 +55,16 @@ async fn main() -> Result<()> {
 
     let http = Router::new()
         .route("/healthz", get(health_handler))
-        .nest_service("/", router)
+        .fallback_service(router)
         .layer(CorsLayer::permissive())
+        .layer(sentry_tower_layer)
         .with_state(app_state.clone());
 
-    let grpc_axum = Server::builder()
-        // .accept_http1(true)
-        .add_service(tonic_web::enable(mlfeed_server))
-        .into_service()
-        .into_axum_router();
+    let grpc_axum = Routes::builder()
+        .routes()
+        .add_service(mlfeed_server)
+        .into_axum_router()
+        .layer(NewSentryLayer::new_from_top());
 
     let http_grpc = Steer::new(
         vec![http, grpc_axum],
@@ -102,45 +90,43 @@ async fn main() -> Result<()> {
 
     axum::serve(listener, Shared::new(http_grpc)).await.unwrap();
 
-    // #[cfg(not(feature = "local-bin"))]
-    // {
-    //     Server::builder()
-    //         .add_service(tonic_web::enable(mlfeed_server))
-    //         .serve(addr)
-    //         .await?;
-    // }
-
-    // #[cfg(feature = "local-bin")]
-    // {
-    //     Server::builder()
-    //         .accept_http1(true)
-    //         .layer(
-    //             CorsLayer::new()
-    //                 .allow_origin(AllowOrigin::mirror_request())
-    //                 .allow_credentials(true)
-    //                 .max_age(DEFAULT_MAX_AGE)
-    //                 .expose_headers(
-    //                     DEFAULT_EXPOSED_HEADERS
-    //                         .iter()
-    //                         .cloned()
-    //                         .map(HeaderName::from_static)
-    //                         .collect::<Vec<HeaderName>>(),
-    //                 )
-    //                 .allow_headers(
-    //                     DEFAULT_ALLOW_HEADERS
-    //                         .iter()
-    //                         .cloned()
-    //                         .map(HeaderName::from_static)
-    //                         .collect::<Vec<HeaderName>>(),
-    //                 ),
-    //         )
-    //         .layer(GrpcWebLayer::new())
-    //         .add_service(mlfeed_server)
-    //         .serve(addr)
-    //         .await?;
-    // }
-
     Ok(())
+}
+
+fn main() {
+    let _guard = sentry::init((
+        "https://55fb42771c224c7c8ba356ff547744c9@sentry.yral.com/5",
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            // debug: true,
+            traces_sample_rate: 0.3,
+            ..Default::default()
+        },
+    ));
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                // axum logs rejections from built-in extractors with the `axum::rejection`
+                // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
+                format!(
+                    "{}=debug,tower_http=debug,axum::rejection=trace",
+                    env!("CARGO_CRATE_NAME")
+                )
+                .into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .with(sentry_tracing::layer())
+        .init();
+
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            main_impl().await.unwrap();
+        });
 }
 
 async fn health_handler() -> (StatusCode, &'static str) {

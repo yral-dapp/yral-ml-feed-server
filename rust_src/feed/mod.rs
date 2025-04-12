@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::{extract::State, response::IntoResponse, Json};
 use candid::Principal;
 use http::StatusCode;
+use tracing::instrument;
 use utils::{
     coldstart_clean_cache::{
         get_coldstart_clean_cache_input_user_impl, get_coldstart_clean_cache_noinput_impl,
@@ -32,6 +33,7 @@ pub mod utils;
 
 use crate::{utils::remove_duplicates, AppState};
 
+#[instrument(skip(state))]
 pub fn feed_router(state: Arc<AppState>) -> OpenApiRouter {
     OpenApiRouter::new()
         .routes(routes!(get_feed_coldstart_clean_v2))
@@ -57,6 +59,7 @@ pub fn feed_router(state: Arc<AppState>) -> OpenApiRouter {
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_coldstart_clean_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
@@ -127,6 +130,7 @@ async fn get_feed_coldstart_clean_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_coldstart_nsfw_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
@@ -197,12 +201,11 @@ async fn get_feed_coldstart_nsfw_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_coldstart_mixed_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("get_feed_coldstart_mixed_v2");
-
     let canister_id = payload.canister_id.clone();
     let num_results = payload.num_results;
     let filter_results = payload.filter_results;
@@ -267,12 +270,11 @@ async fn get_feed_coldstart_mixed_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_clean_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("get_feed_clean_v2");
-
     let canister_id = payload.canister_id.clone();
     let feed = get_ml_feed_clean_impl(
         state.ml_feed_cache.clone(),
@@ -324,12 +326,11 @@ async fn get_feed_clean_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_nsfw_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("get_feed_nsfw_v2");
-
     let canister_id = payload.canister_id.clone();
     let feed = get_ml_feed_nsfw_impl(
         state.ml_feed_cache.clone(),
@@ -381,12 +382,11 @@ async fn get_feed_nsfw_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state, payload), fields(canister_id = %payload.canister_id))]
 async fn get_feed_mixed_v2(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<FeedRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("get_feed_mixed_v2");
-
     let canister_id = payload.canister_id.clone();
     let feed = get_ml_feed_mixed_impl(
         state.ml_feed_cache.clone(),
@@ -437,11 +437,10 @@ async fn get_feed_mixed_v2(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state))]
 async fn update_global_cache_clean(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("update_global_cache_clean");
-
     let feed = get_global_cache_clean().await.map_err(|e| {
         log::error!("Failed to get global cache clean: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
@@ -471,11 +470,10 @@ async fn update_global_cache_clean(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state))]
 async fn update_global_cache_nsfw(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("update_global_cache_nsfw");
-
     let feed = get_global_cache_nsfw().await.map_err(|e| {
         log::error!("Failed to get global cache clean: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
@@ -505,11 +503,10 @@ async fn update_global_cache_nsfw(
         (status = 500, description = "Internal server error"),
     )
 )]
+#[instrument(skip(state))]
 async fn update_global_cache_mixed(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    log::info!("update_global_cache_mixed");
-
     let feed = get_global_cache_mixed().await.map_err(|e| {
         log::error!("Failed to get global cache clean: {}", e);
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
