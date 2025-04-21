@@ -85,7 +85,7 @@ pub async fn get_ml_feed_clean_impl(
     };
 
     let response = client
-        .get_ml_feed_clean_v2(request)
+        .get_ml_feed_clean_v2_deduped(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
@@ -176,7 +176,7 @@ pub async fn get_ml_feed_nsfw_impl(
     };
 
     let response = client
-        .get_ml_feed_nsfw_v2(request)
+        .get_ml_feed_nsfw_v2_deduped(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
@@ -289,7 +289,7 @@ pub async fn get_ml_feed_mixed_impl(
     };
 
     let response = client
-        .get_ml_feed_combined(request)
+        .get_ml_feed_combined_deduped(request)
         .await
         .map_err(|e| anyhow::anyhow!("Failed to get ml_feed_py response: {}", e))?;
 
