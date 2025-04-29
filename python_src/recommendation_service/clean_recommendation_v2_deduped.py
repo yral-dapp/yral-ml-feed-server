@@ -17,6 +17,10 @@ from recommendation_service.consts import (
     VIDEO_NSFW_TABLE,
     DUPLICATE_VIDEO_TABLE,
 )
+import json
+import os
+from datetime import datetime
+import uuid
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +36,7 @@ class CleanRecommendationV2Deduped:
         self.sample_size = 5  # number of successful plays to sample
         self.video_bucket_name = cfg.get("video_bucket_name")
         self.logging = cfg.get("logging")
+        self.log_dir = cfg.get("log_dir", "logs")
 
     def fetch_embeddings(self, uri_list):
         """
@@ -489,7 +494,7 @@ where video_id in ({video_ids_string})"""
         if self.logging :
             url_template = "https://yral.com/hot-or-not/{canister_id}/{post_id}"
             similar_videos = [url_template.format(canister_id=item["canister_id"], post_id=item["post_id"]) for item in exploit_recommendation]
-            print(similar_videos)
+            # print(similar_videos)
             # print(f"Similar videos: {"\n".join(similar_videos)}")
 
 
@@ -601,33 +606,80 @@ where video_id in ({video_ids_string})"""
             combined_feed, weights=combined_weights, k=num_results
         )
 
+        deduped_sampled_feed = []
+        seen = set()
+        for item in sampled_feed:
+            identifier = f"{item['post_id']}_{item['canister_id']}"
+            if identifier not in seen:
+                seen.add(identifier)
+                deduped_sampled_feed.append(item)
+
         # for debugging
         if self.logging:
-            _LOGGER.info(f"Length of returned feed: {len(sampled_feed)}")
+            _LOGGER.info(f"Length of returned feed: {len(deduped_sampled_feed)}")
         exploitation_count = sum(
-            1 for item in sampled_feed if item in response_exploitation
+            1 for item in deduped_sampled_feed if item in response_exploitation
         )
-        recency_count = sum(1 for item in sampled_feed if item in response_recency)
+        recency_count = sum(1 for item in deduped_sampled_feed if item in response_recency)
         exploration_count = sum(
-            1 for item in sampled_feed if item in response_exploration
+            1 for item in deduped_sampled_feed if item in response_exploration
         )
         random_recent_count = sum(
-            1 for item in sampled_feed if item in response_random_recent
+            1 for item in deduped_sampled_feed if item in response_random_recent
         )
         
-        if self.logging:
-            print(
-            f"Clean feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}"
-        )
+        # if self.logging:
+        #     print(
+        #     f"Clean feed || Exploitation count: {exploitation_count}, Recency count: {recency_count}, Exploration count: {exploration_count}, Random recent count: {random_recent_count}"
+        # )
+
+        # if self.logging:
+        #     print(
+        #         f"Clean feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
+        #     )  # having logging level at error for quick check. #TODO: remove this
 
         if self.logging:
-            print(
-                f"Clean feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
-            )  # having logging level at error for quick check. #TODO: remove this
-
-        if self.logging:
-            print(f"""Clean feed || Videos recommended: {len(sampled_feed)}""")
-        response = create_feed_response(sampled_feed)
+            # print(f"""Clean feed || Videos recommended: {len(sampled_feed)}""")
+            
+            # Write all the data to a JSON file
+            os.makedirs(self.log_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = os.path.join(self.log_dir, f"clean_recommendation_{timestamp}_{user_canister_id}_{uuid.uuid4()}.json")
+            
+            log_data = {
+                "timestamp": timestamp,
+                "inputs": {
+                    "successful_plays": successful_plays,
+                    "watch_history_uris": watch_history_uris,
+                    "num_results": num_results,
+                    "user_canister_id": user_canister_id
+                },
+                "recommendations": {
+                    "response_exploitation": response_exploitation,
+                    "response_exploration": response_exploration,
+                    "response_recency": response_recency,
+                    "response_random_recent": response_random_recent,
+                    "combined_feed": list(combined_feed),
+                    "sampled_feed": deduped_sampled_feed
+                },
+                "stats": {
+                    "exploitation_count": exploitation_count,
+                    "recency_count": recency_count,
+                    "exploration_count": exploration_count,
+                    "random_recent_count": random_recent_count,
+                    "exploitation_score": exploitation_score,
+                    "exploration_score": exploration_score,
+                    "recency_exploitation_score": recency_exploitation_score,
+                    "random_recent_score": random_recent_score
+                }
+            }
+            
+            with open(log_file, 'w') as f:
+                json.dump(log_data, f, indent=2, default=str)
+            
+            _LOGGER.info(f"Clean recommendation data logged to {log_file}")
+            
+        response = create_feed_response(deduped_sampled_feed)
         return response
 
 
@@ -710,9 +762,9 @@ if __name__ == "__main__":
     _LOGGER.info(
         f"Time required to get the recommendation: {end_time - start_time:.2f} seconds"
     )
-    print(
-        f"Time required to get the recommendation: {end_time - start_time:.2f} seconds"
-    )
+    # print(
+    #     f"Time required to get the recommendation: {end_time - start_time:.2f} seconds"
+    # )
 
     for item in feed.feed:
         canister_id = item.canister_id
