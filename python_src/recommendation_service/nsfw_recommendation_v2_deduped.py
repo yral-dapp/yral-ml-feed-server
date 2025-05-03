@@ -17,6 +17,7 @@ from recommendation_service.consts import (
     REPORT_VIDEO_TABLE,
     VIDEO_NSFW_TABLE,
     DUPLICATE_VIDEO_TABLE,
+    VIDEO_UNIQUE_TABLE,
 )
 import json
 import os
@@ -34,7 +35,7 @@ class NsfwRecommendationV2Deduped:
         self.bq = BigQueryClient()
         # self.upstash_db = UpstashUtils()
         ### hyper-parameters
-        self.sample_size = 5  # number of successful plays to sample
+        self.sample_size = 10  # number of successful plays to sample
         self.video_bucket_name = cfg.get("video_bucket_name")
         self.logging = cfg.get("logging")
         self.log_dir = cfg.get("log_dir", "logs")
@@ -120,10 +121,9 @@ class NsfwRecommendationV2Deduped:
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
@@ -143,10 +143,9 @@ class NsfwRecommendationV2Deduped:
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
@@ -233,10 +232,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             ),
             'embedding',
@@ -245,7 +243,8 @@ where video_id in ({video_ids_string})"""
             FROM {VIDEO_INDEX_TABLE}
             WHERE uri IN ({sample_uris_string})
             ),
-            top_k => 1000
+            top_k => 5000,
+            options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
         )
         )
         SELECT search_result.uri, search_result.post_id, search_result.canister_id, search_result.distance, 
@@ -256,7 +255,8 @@ where video_id in ({video_ids_string})"""
         ON search_result.uri = video_nsfw_agg.gcs_video_id
         where video_nsfw_agg.probability > 0.7
         ORDER BY distance 
-        LIMIT {search_breadth}
+        LIMIT {4*num_results}
+--        LIMIT {search_breadth}
         """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])
@@ -305,17 +305,16 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
-            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            order by timestamp desc
             limit {4*num_results}
             )
             select * from recent_uploads
             order by RAND()
-            limit {num_results}
+            limit {4*num_results}
             """
 
         else:
@@ -340,17 +339,16 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
-            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            order by timestamp desc
             limit {4*num_results}
             )
             select * from recent_uploads
             order by RAND()
-            limit {num_results}
+            limit {4*num_results}
             """
 
         result_df = self.bq.query(query).drop_duplicates(subset=["uri"])
@@ -404,10 +402,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             ),
             'embedding',
@@ -419,7 +416,7 @@ where video_id in ({video_ids_string})"""
             AND post_id is not null
             AND canister_id is not null
             ),
-            top_k => 1000,
+            top_k => 5000,
             options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
             )
         )
@@ -431,7 +428,8 @@ where video_id in ({video_ids_string})"""
         ON search_result.uri = video_nsfw_agg.gcs_video_id
         where video_nsfw_agg.probability > 0.7
         ORDER BY distance 
-        LIMIT {search_breadth}
+        LIMIT {4*num_results}
+--        LIMIT {search_breadth}
         """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])

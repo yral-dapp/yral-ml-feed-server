@@ -16,7 +16,8 @@ from recommendation_service.consts import (
     REPORT_VIDEO_TABLE,
     VIDEO_NSFW_TABLE,
     DELETE_VIDEO_TABLE,
-    DUPLICATE_VIDEO_TABLE
+    DUPLICATE_VIDEO_TABLE,
+    VIDEO_UNIQUE_TABLE
 )
 import json
 import os
@@ -120,10 +121,9 @@ class CombinedRecommendationV2Deduped:
                 SELECT 1 FROM {DELETE_VIDEO_TABLE}
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -141,10 +141,9 @@ class CombinedRecommendationV2Deduped:
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             ORDER BY global_popularity_score DESC
             LIMIT {int(4*num_results)}
@@ -225,10 +224,9 @@ where video_id in ({video_ids_string})"""
                     SELECT 1 FROM yral_ds.video_deleted
                     WHERE gcs_video_id = uri
                 )
-                AND NOT EXISTS (
-                    SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                    WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                    AND exact_duplicate = True
+                AND EXISTS (
+                    SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                    WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
                 )
             ),
             'embedding',
@@ -296,10 +294,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -330,10 +327,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
             limit {4*num_results}
@@ -393,10 +389,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 from {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             ),
             'embedding',
