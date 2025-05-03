@@ -17,7 +17,12 @@ from recommendation_service.consts import (
     REPORT_VIDEO_TABLE,
     VIDEO_NSFW_TABLE,
     DUPLICATE_VIDEO_TABLE,
+    VIDEO_UNIQUE_TABLE,
 )
+import json
+import os
+from datetime import datetime
+import uuid
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,9 +35,10 @@ class NsfwRecommendationV2Deduped:
         self.bq = BigQueryClient()
         # self.upstash_db = UpstashUtils()
         ### hyper-parameters
-        self.sample_size = 5  # number of successful plays to sample
+        self.sample_size = 10  # number of successful plays to sample
         self.video_bucket_name = cfg.get("video_bucket_name")
         self.logging = cfg.get("logging")
+        self.log_dir = cfg.get("log_dir", "logs")
 
     def fetch_embeddings(self, uri_list):
         """
@@ -115,10 +121,9 @@ class NsfwRecommendationV2Deduped:
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
@@ -138,10 +143,9 @@ class NsfwRecommendationV2Deduped:
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = {GLOBAL_POPULAR_VIDEOS_TABLE}.video_id
             )
             AND nsfw_probability > 0.7
             ORDER BY global_popularity_score DESC
@@ -228,10 +232,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             ),
             'embedding',
@@ -240,7 +243,8 @@ where video_id in ({video_ids_string})"""
             FROM {VIDEO_INDEX_TABLE}
             WHERE uri IN ({sample_uris_string})
             ),
-            top_k => 1000
+            top_k => 5000,
+            options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
         )
         )
         SELECT search_result.uri, search_result.post_id, search_result.canister_id, search_result.distance, 
@@ -251,7 +255,8 @@ where video_id in ({video_ids_string})"""
         ON search_result.uri = video_nsfw_agg.gcs_video_id
         where video_nsfw_agg.probability > 0.7
         ORDER BY distance 
-        LIMIT {search_breadth}
+        LIMIT {4*num_results}
+--        LIMIT {search_breadth}
         """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])
@@ -300,17 +305,16 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
-            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            order by timestamp desc
             limit {4*num_results}
             )
             select * from recent_uploads
             order by RAND()
-            limit {num_results}
+            limit {4*num_results}
             """
 
         else:
@@ -335,17 +339,16 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
-            order by TIMESTAMP_TRUNC(TIMESTAMP(SUBSTR(timestamp, 1, 26)), MICROSECOND) desc
+            order by timestamp desc
             limit {4*num_results}
             )
             select * from recent_uploads
             order by RAND()
-            limit {num_results}
+            limit {4*num_results}
             """
 
         result_df = self.bq.query(query).drop_duplicates(subset=["uri"])
@@ -399,10 +402,9 @@ where video_id in ({video_ids_string})"""
                 SELECT 1 FROM yral_ds.video_deleted
                 WHERE gcs_video_id = uri
             )
-            AND NOT EXISTS (
-                SELECT 1 FROM {DUPLICATE_VIDEO_TABLE}
-                WHERE original_video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
-                AND exact_duplicate = True
+            AND EXISTS (
+                SELECT 1 FROM {VIDEO_UNIQUE_TABLE}
+                WHERE video_id = SUBSTR(uri, 18, ABS(LENGTH(uri) - 21))
             )
             ),
             'embedding',
@@ -414,7 +416,7 @@ where video_id in ({video_ids_string})"""
             AND post_id is not null
             AND canister_id is not null
             ),
-            top_k => 1000,
+            top_k => 5000,
             options => '{{"fraction_lists_to_search":0.6}}' -- CAUTION: This is high at the moment owing to the sparsity of the data, as an when we will have good number of recent uploads, this has to go down!
             )
         )
@@ -426,7 +428,8 @@ where video_id in ({video_ids_string})"""
         ON search_result.uri = video_nsfw_agg.gcs_video_id
         where video_nsfw_agg.probability > 0.7
         ORDER BY distance 
-        LIMIT {search_breadth}
+        LIMIT {4*num_results}
+--        LIMIT {search_breadth}
         """
         try:
             result_df = self.bq.query(vs_query).drop_duplicates(subset=["uri"])
@@ -493,7 +496,7 @@ where video_id in ({video_ids_string})"""
         if self.logging:
             url_template = "https://yral.com/hot-or-not/{canister_id}/{post_id}"
             similar_videos = [url_template.format(canister_id=item["canister_id"], post_id=item["post_id"]) for item in exploit_recommendation]
-            print(similar_videos)
+            # print(similar_videos)
 
         def create_feed_response(feed_items):
             return video_recommendation_pb2.MLFeedResponseV2(
@@ -600,20 +603,29 @@ where video_id in ({video_ids_string})"""
         sampled_feed = random.choices(
             combined_feed, weights=combined_weights, k=num_results
         )
+        # deduping the sampled_feed
+        seen = set()
+        deduped_sampled_feed = []
+        for item in sampled_feed:
+            identifier = f"{item['post_id']}_{item['canister_id']}"
+            if identifier not in seen:
+                seen.add(identifier)
+                deduped_sampled_feed.append(item)
+
 
         # for debugging
         if self.logging:
-            _LOGGER.info(f"Length of returned feed: {len(sampled_feed)}")
+            _LOGGER.info(f"Length of returned feed: {len(deduped_sampled_feed)}")
             
         exploitation_count = sum(
-            1 for item in sampled_feed if item in response_exploitation
+            1 for item in deduped_sampled_feed if item in response_exploitation
         )
-        recency_count = sum(1 for item in sampled_feed if item in response_recency)
+        recency_count = sum(1 for item in deduped_sampled_feed if item in response_recency)
         exploration_count = sum(
-            1 for item in sampled_feed if item in response_exploration
+            1 for item in deduped_sampled_feed if item in response_exploration
         )
         random_recent_count = sum(
-            1 for item in sampled_feed if item in response_random_recent
+            1 for item in deduped_sampled_feed if item in response_random_recent
         )
 
         if self.logging:
@@ -625,9 +637,47 @@ where video_id in ({video_ids_string})"""
                 f"NSFW feed || Exploitation weight: {exploitation_score}, Exploration weight: {exploration_score}, Recency weight: {recency_exploitation_score}, Random recent weight: {random_recent_score}"
             )
 
-            _LOGGER.info(f"""NSFW feed || Videos recommended: {len(sampled_feed)}""")
+            _LOGGER.info(f"""NSFW feed || Videos recommended: {len(deduped_sampled_feed)}""")
             
-        response = create_feed_response(sampled_feed)
+            # Write all the data to a JSON file
+            os.makedirs(self.log_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = os.path.join(self.log_dir, f"nsfw_recommendation_{timestamp}_{user_canister_id}_{uuid.uuid4()}.json")
+            
+            log_data = {
+                "timestamp": timestamp,
+                "inputs": {
+                    "successful_plays": successful_plays,
+                    "watch_history_uris": watch_history_uris,
+                    "num_results": num_results,
+                    "user_canister_id": user_canister_id
+                },
+                "recommendations": {
+                    "response_exploitation": response_exploitation,
+                    "response_exploration": response_exploration,
+                    "response_recency": response_recency,
+                    "response_random_recent": response_random_recent,
+                    "combined_feed": list(combined_feed),
+                    "sampled_feed": deduped_sampled_feed
+                },
+                "stats": {
+                    "exploitation_count": exploitation_count,
+                    "recency_count": recency_count,
+                    "exploration_count": exploration_count,
+                    "random_recent_count": random_recent_count,
+                    "exploitation_score": exploitation_score,
+                    "exploration_score": exploration_score,
+                    "recency_exploitation_score": recency_exploitation_score,
+                    "random_recent_score": random_recent_score
+                }
+            }
+            
+            with open(log_file, 'w') as f:
+                json.dump(log_data, f, indent=2, default=str)
+            
+            _LOGGER.info(f"Recommendation data logged to {log_file}")
+            
+        response = create_feed_response(deduped_sampled_feed)
         return response
 
 
