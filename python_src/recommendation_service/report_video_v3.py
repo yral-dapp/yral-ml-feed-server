@@ -116,7 +116,7 @@ class ReportVideoV3:
                     "video_canister_id": "",
                     "video_post_id": "",
                     "video_uri": str(
-                        f"gs://yral-videos/{video_id}.mp4"
+                        video_id
                     ), 
                     "parent_video_canister_id": "",
                     "parent_video_post_id": "",
@@ -204,7 +204,7 @@ if __name__ == "__main__":
     reporter = ReportVideoV3()
     success = reporter.report_video_v3(
         reportee_user_id="test_user_jay_2",
-        video_id="dc3f5cc8b7f04257be1943f321025b63",
+        video_id="gs://yral-videos/dc3f5cc8b7f04257be1943f321025b63.mp4",
         reason="duplicates",
     )
 
