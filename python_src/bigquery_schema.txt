@@ -1,0 +1,294 @@
+
+Table: yral_ds.canister_user_principal
+- canister_id (STRING) [REQUIRED]
+- user_principal_id (STRING) [REQUIRED]
+
+Table: yral_ds.duplicate_videos
+- publisher_canister_id (STRING) [NULLABLE]
+- publisher_principal (STRING) [NULLABLE]
+- post_id (INTEGER) [NULLABLE]
+- original_video_id (STRING) [NULLABLE]
+- parent_video_id (STRING) [NULLABLE]
+- parent_canister_id (STRING) [NULLABLE]
+- parent_principal (STRING) [NULLABLE]
+- parent_post_id (INTEGER) [NULLABLE]
+- exact_duplicate (BOOLEAN) [NULLABLE]
+- duplication_score (FLOAT) [NULLABLE]
+
+Table: yral_ds.global_popular_videos_l7d
+- video_id (STRING) [NULLABLE]
+- normalized_like_perc_p (FLOAT) [NULLABLE]
+- normalized_watch_perc_p (FLOAT) [NULLABLE]
+- global_popularity_score (FLOAT) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- nsfw_probability (FLOAT) [NULLABLE]
+
+Table: yral_ds.global_popular_videos_l90d
+- video_id (STRING) [NULLABLE]
+- normalized_like_perc (FLOAT) [NULLABLE]
+- normalized_watch_perc (FLOAT) [NULLABLE]
+- global_popularity_score (FLOAT) [NULLABLE]
+
+Table: yral_ds.global_video_stats
+- global_avg_user_normalized_likes (FLOAT) [NULLABLE]
+- global_stddev_user_normalized_likes (FLOAT) [NULLABLE]
+- global_avg_user_normalized_shares (FLOAT) [NULLABLE]
+- global_stddev_user_normalized_shares (FLOAT) [NULLABLE]
+- global_avg_user_normalized_watch_percentage (FLOAT) [NULLABLE]
+- global_stddev_user_normalized_watch_percentage (FLOAT) [NULLABLE]
+- total_impressions (INTEGER) [NULLABLE]
+- last_update_timestamp (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.local_popular_videos_l7d
+- video_id (STRING) [NULLABLE]
+- region (STRING) [NULLABLE]
+- normalized_like_perc (FLOAT) [NULLABLE]
+- normalized_watch_perc (FLOAT) [NULLABLE]
+- local_popularity_score (FLOAT) [NULLABLE]
+
+Table: yral_ds.local_popular_videos_l90d
+- video_id (STRING) [NULLABLE]
+- region (STRING) [NULLABLE]
+- normalized_like_perc (FLOAT) [NULLABLE]
+- normalized_watch_perc (FLOAT) [NULLABLE]
+- local_popularity_score (FLOAT) [NULLABLE]
+
+Table: yral_ds.ml_feed_reports
+- reportee_user_id (STRING) [NULLABLE]
+- reportee_canister_id (STRING) [NULLABLE]
+- video_canister_id (STRING) [NULLABLE]
+- video_post_id (STRING) [NULLABLE]
+- video_uri (STRING) [NULLABLE]
+- parent_video_canister_id (STRING) [NULLABLE]
+- parent_video_post_id (STRING) [NULLABLE]
+- parent_video_uri (STRING) [NULLABLE]
+- report_timestamp (STRING) [NULLABLE]
+- report_type (STRING) [NULLABLE]
+- reason (STRING) [NULLABLE]
+
+Table: yral_ds.test_user_cluster_embeddings
+- user_id (STRING) [REQUIRED]
+- cluster_id (INTEGER) [NULLABLE]
+- user_embedding (FLOAT) [REPEATED]
+- updated_at (TIMESTAMP) [REQUIRED]
+
+Table: yral_ds.userVideoRelation
+- user_id (STRING) [NULLABLE]
+- video_id (STRING) [NULLABLE]
+- last_watched_timestamp (TIMESTAMP) [NULLABLE]
+- mean_percentage_watched (FLOAT) [NULLABLE]
+- last_liked_timestamp (TIMESTAMP) [NULLABLE]
+- liked (BOOLEAN) [NULLABLE]
+- last_shared_timestamp (TIMESTAMP) [NULLABLE]
+- shared (BOOLEAN) [NULLABLE]
+
+Table: yral_ds.user_base_facts
+- user_id (STRING) [NULLABLE]
+- user_info (RECORD) [NULLABLE]
+- device (RECORD) [NULLABLE]
+- geo (RECORD) [NULLABLE]
+- audiences (RECORD) [REPEATED]
+- user_properties (RECORD) [REPEATED]
+- user_ltv (RECORD) [NULLABLE]
+- predictions (RECORD) [NULLABLE]
+- privacy_info (RECORD) [NULLABLE]
+- occurrence_date (STRING) [NULLABLE]
+- last_updated_date (DATE) [NULLABLE]
+
+Table: yral_ds.user_video_metrics
+- user_id (STRING) [NULLABLE]
+- user_like_avg (FLOAT) [NULLABLE]
+- user_like_stddev (FLOAT) [NULLABLE]
+- user_normalized_like_avg (FLOAT) [NULLABLE]
+- user_normalized_like_stddev (FLOAT) [NULLABLE]
+- total_likes (INTEGER) [NULLABLE]
+- user_share_avg (FLOAT) [NULLABLE]
+- user_share_stddev (FLOAT) [NULLABLE]
+- user_normalized_share_avg (FLOAT) [NULLABLE]
+- user_normalized_share_stddev (FLOAT) [NULLABLE]
+- total_shares (INTEGER) [NULLABLE]
+- user_watch_percentage_avg (FLOAT) [NULLABLE]
+- user_watch_percentage_stddev (FLOAT) [NULLABLE]
+- user_normalized_watch_percentage_avg (FLOAT) [NULLABLE]
+- user_normalized_watch_percentage_stddev (FLOAT) [NULLABLE]
+- total_watches (INTEGER) [NULLABLE]
+- last_update_timestamp (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.video_deleted
+- canister_id (STRING) [NULLABLE]
+- post_id (INTEGER) [NULLABLE]
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+
+Table: yral_ds.video_embeddings
+- ml_generate_embedding_result (FLOAT) [REPEATED]
+- ml_generate_embedding_status (STRING) [NULLABLE]
+- ml_generate_embedding_start_sec (INTEGER) [NULLABLE]
+- ml_generate_embedding_end_sec (INTEGER) [NULLABLE]
+- uri (STRING) [NULLABLE]
+- generation (INTEGER) [NULLABLE]
+- content_type (STRING) [NULLABLE]
+- size (INTEGER) [NULLABLE]
+- md5_hash (STRING) [NULLABLE]
+- updated (TIMESTAMP) [NULLABLE]
+- metadata (RECORD) [REPEATED]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+
+Table: yral_ds.video_embeddings-2024-10-21T21_47_38
+- ml_generate_embedding_result (FLOAT) [REPEATED]
+- ml_generate_embedding_status (STRING) [NULLABLE]
+- ml_generate_embedding_start_sec (INTEGER) [NULLABLE]
+- ml_generate_embedding_end_sec (INTEGER) [NULLABLE]
+- uri (STRING) [NULLABLE]
+- generation (INTEGER) [NULLABLE]
+- content_type (STRING) [NULLABLE]
+- size (INTEGER) [NULLABLE]
+- md5_hash (STRING) [NULLABLE]
+- updated (TIMESTAMP) [NULLABLE]
+- metadata (RECORD) [REPEATED]
+
+Table: yral_ds.video_embeddings-2024-11-24T20_03_20
+- ml_generate_embedding_result (FLOAT) [REPEATED]
+- ml_generate_embedding_status (STRING) [NULLABLE]
+- ml_generate_embedding_start_sec (INTEGER) [NULLABLE]
+- ml_generate_embedding_end_sec (INTEGER) [NULLABLE]
+- uri (STRING) [NULLABLE]
+- generation (INTEGER) [NULLABLE]
+- content_type (STRING) [NULLABLE]
+- size (INTEGER) [NULLABLE]
+- md5_hash (STRING) [NULLABLE]
+- updated (TIMESTAMP) [NULLABLE]
+- metadata (RECORD) [REPEATED]
+
+Table: yral_ds.video_embeddings_agg
+- ml_generate_embedding_result (FLOAT) [REPEATED]
+- ml_generate_embedding_status (STRING) [NULLABLE]
+- ml_generate_embedding_start_sec (INTEGER) [NULLABLE]
+- ml_generate_embedding_end_sec (INTEGER) [NULLABLE]
+- uri (STRING) [NULLABLE]
+- generation (INTEGER) [NULLABLE]
+- content_type (STRING) [NULLABLE]
+- size (INTEGER) [NULLABLE]
+- md5_hash (STRING) [NULLABLE]
+- updated (TIMESTAMP) [NULLABLE]
+- metadata (RECORD) [REPEATED]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+- video_id (STRING) [NULLABLE]
+
+Table: yral_ds.video_index
+- uri (STRING) [NULLABLE]
+- post_id (STRING) [NULLABLE]
+- timestamp (STRING) [NULLABLE]
+- canister_id (STRING) [NULLABLE]
+- embedding (FLOAT) [REPEATED]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+
+Table: yral_ds.video_metadata
+- video_id (STRING) [NULLABLE]
+- post_id (STRING) [NULLABLE]
+- canister_id (STRING) [NULLABLE]
+
+Table: yral_ds.video_nsfw
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+
+Table: yral_ds.video_nsfw-2024-11-25T00_17_00
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+
+Table: yral_ds.video_nsfw_agg
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+
+Table: yral_ds.video_nsfw_agg_copy
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+
+Table: yral_ds.video_nsfw_copy
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+
+Table: yral_ds.video_nsfw_v2
+- video_id (STRING) [NULLABLE]
+- gcs_video_id (STRING) [NULLABLE]
+- probability (FLOAT) [NULLABLE]
+- is_nsfw (BOOLEAN) [NULLABLE]
+- nsfw_ec (STRING) [NULLABLE]
+- nsfw_gore (STRING) [NULLABLE]
+
+Table: yral_ds.video_object_table
+- uri (STRING) [NULLABLE]
+- generation (INTEGER) [NULLABLE]
+- content_type (STRING) [NULLABLE]
+- size (INTEGER) [NULLABLE]
+- md5_hash (STRING) [NULLABLE]
+- updated (TIMESTAMP) [NULLABLE]
+- metadata (RECORD) [REPEATED]
+
+Table: yral_ds.video_statistics
+- video_id (STRING) [NULLABLE]
+- user_normalized_like_perc (FLOAT) [NULLABLE]
+- user_normalized_share_perc (FLOAT) [NULLABLE]
+- user_normalized_watch_percentage_perc (FLOAT) [NULLABLE]
+- total_impressions (INTEGER) [NULLABLE]
+- last_update_timestamp (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.video_statistics_normalized
+- video_id (STRING) [NULLABLE]
+- like_percentage_un (FLOAT) [NULLABLE]
+- share_percentage_un (FLOAT) [NULLABLE]
+- watch_percentage_un (FLOAT) [NULLABLE]
+- normalized_like_perc (FLOAT) [NULLABLE]
+- normalized_share_perc (FLOAT) [NULLABLE]
+- normalized_watch_perc (FLOAT) [NULLABLE]
+- total_impressions (INTEGER) [NULLABLE]
+- last_update_timestamp (TIMESTAMP) [NULLABLE]
+- ds_quality_score (FLOAT) [NULLABLE]
+
+Table: yral_ds.video_unique
+- video_id (STRING) [NULLABLE]
+- videohash (STRING) [NULLABLE]
+- created_at (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.video_unique_testing_duplicate
+- video_id (STRING) [NULLABLE]
+- videohash (STRING) [NULLABLE]
+- created_at (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.videohash_original
+- video_id (STRING) [NULLABLE]
+- videohash (STRING) [NULLABLE]
+- created_at (TIMESTAMP) [NULLABLE]
+
+Table: yral_ds.videohash_original_testing_duplicate
+- video_id (STRING) [NULLABLE]
+- videohash (STRING) [NULLABLE]
+- created_at (TIMESTAMP) [NULLABLE]
